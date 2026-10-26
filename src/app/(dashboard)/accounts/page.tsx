@@ -1,0 +1,84 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AccountCard } from "@/components/accounts/AccountCard";
+import { Card } from "@/components/ui/Card";
+import { isSnaptradeConfigured } from "@/lib/snaptrade/client";
+import { checkOwner } from "@/lib/snaptrade/owner";
+import { describeError } from "@/lib/snaptrade/errors";
+import { fetchSnapshot } from "@/lib/snaptrade/snapshot";
+import type { SnapshotResult } from "@/lib/snaptrade/types";
+
+// Brokerage data must be fresh per request, never statically rendered.
+export const dynamic = "force-dynamic";
+
+export default async function AccountsPage() {
+  const owner = await checkOwner();
+  if (!owner.ok && owner.status === 401) redirect("/login");
+
+  let snapshot: SnapshotResult | null = null;
+  let error: string | null = null;
+
+  if (!owner.ok) {
+    error = owner.message;
+  } else if (!isSnaptradeConfigured()) {
+    error =
+      "SnapTrade isn't configured. Set SNAPTRADE_CLIENT_ID and SNAPTRADE_CONSUMER_KEY in .env.local and restart the server.";
+  } else {
+    try {
+      snapshot = await fetchSnapshot();
+    } catch (err) {
+      console.error("SnapTrade snapshot failed:", describeError(err));
+      error = `Could not fetch accounts from SnapTrade. ${describeError(err)}.`;
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">Brokerage Accounts</h1>
+          <Link href="/dashboard" className="text-sm text-primary-600 hover:underline">
+            ← Dashboard
+          </Link>
+        </div>
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {snapshot && (
+          <>
+            <p className="text-sm text-gray-500">
+              Retrieved {new Date(snapshot.fetchedAt).toLocaleString()}. Prices
+              may be delayed depending on the brokerage.
+            </p>
+
+            {snapshot.failures.map((f) => (
+              <div
+                key={f.accountId}
+                className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800"
+              >
+                Couldn&apos;t load <span className="font-medium">{f.accountName}</span>
+                : {f.message}
+              </div>
+            ))}
+
+            {snapshot.accounts.length === 0 && snapshot.failures.length === 0 ? (
+              <Card>
+                <p className="text-sm text-gray-600">
+                  No brokerage accounts found on your SnapTrade account.
+                </p>
+              </Card>
+            ) : (
+              snapshot.accounts.map((s) => (
+                <AccountCard key={s.account.id} snapshot={s} />
+              ))
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

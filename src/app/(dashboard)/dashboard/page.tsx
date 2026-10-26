@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isOwnerEmail } from "@/lib/snaptrade/owner";
 import { PortfolioSummary } from "@/components/portfolio/PortfolioSummary";
 import { HoldingsTable } from "@/components/portfolio/HoldingsTable";
 import { PortfolioPieChart } from "@/components/portfolio/PortfolioPieChart";
@@ -69,6 +70,25 @@ export default async function DashboardPage() {
               <p className="text-sm text-gray-600">Welcome, {user.email}</p>
             </div>
             <div className="flex items-center gap-3">
+              {isOwnerEmail(user.email) && (
+                <>
+                  <Link href="/overview">
+                    <Button variant="outline">Overview</Button>
+                  </Link>
+                  <Link href="/performance">
+                    <Button variant="outline">Performance</Button>
+                  </Link>
+                  <Link href="/returns">
+                    <Button variant="outline">Returns</Button>
+                  </Link>
+                  <Link href="/accounts">
+                    <Button variant="outline">Accounts</Button>
+                  </Link>
+                </>
+              )}
+              <Link href="/portfolio/import">
+                <Button variant="outline">Import CSV</Button>
+              </Link>
               <Link href="/portfolio/add">
                 <Button>Add Transaction</Button>
               </Link>
