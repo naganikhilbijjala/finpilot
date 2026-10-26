@@ -1,80 +1,50 @@
 "use client";
 
 import { formatXIRR } from "@/lib/utils/xirr";
-import { Card } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { ChartIcon, PercentIcon, SparkIcon, WalletIcon } from "@/components/ui/Icons";
 import type { PortfolioAnalytics } from "@/lib/types";
 
 interface PortfolioSummaryProps {
   analytics: PortfolioAnalytics;
 }
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+
+const formatPercentage = (value: number) => `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+
 export function PortfolioSummary({ analytics }: PortfolioSummaryProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
-  };
-
-  const formatPercentage = (value: number) => {
-    return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
-  };
-
-  const isPositive = analytics.totalAbsoluteGain >= 0;
+  const tone = analytics.totalAbsoluteGain >= 0 ? "positive" : "negative";
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Total Value */}
-      <Card>
-        <div>
-          <p className="text-sm font-medium text-gray-600">Total Value</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
-            {formatCurrency(analytics.totalCurrentValue)}
-          </p>
-        </div>
-      </Card>
-
-      {/* Total Invested */}
-      <Card>
-        <div>
-          <p className="text-sm font-medium text-gray-600">Total Invested</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
-            {formatCurrency(analytics.totalInvested)}
-          </p>
-        </div>
-      </Card>
-
-      {/* Total Gain/Loss */}
-      <Card>
-        <div>
-          <p className="text-sm font-medium text-gray-600">Total Gain/Loss</p>
-          <p
-            className={`text-2xl font-bold mt-1 ${
-              isPositive ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {formatCurrency(analytics.totalAbsoluteGain)}
-          </p>
-          <p
-            className={`text-sm mt-1 ${
-              isPositive ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {formatPercentage(analytics.totalPercentageGain)}
-          </p>
-        </div>
-      </Card>
-
-      {/* Overall XIRR */}
-      <Card>
-        <div>
-          <p className="text-sm font-medium text-gray-600">Overall XIRR</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
-            {formatXIRR(analytics.overallXIRR)}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">Annualized Return</p>
-        </div>
-      </Card>
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <StatCard
+        accent
+        label="Total value"
+        icon={<WalletIcon className="h-4 w-4" />}
+        value={formatCurrency(analytics.totalCurrentValue)}
+        sub="Current market value"
+      />
+      <StatCard
+        label="Total invested"
+        icon={<ChartIcon className="h-4 w-4" />}
+        value={formatCurrency(analytics.totalInvested)}
+        sub="Cost basis"
+      />
+      <StatCard
+        label="Total gain / loss"
+        icon={<SparkIcon className="h-4 w-4" />}
+        value={formatCurrency(analytics.totalAbsoluteGain)}
+        sub={formatPercentage(analytics.totalPercentageGain)}
+        tone={tone}
+      />
+      <StatCard
+        label="Overall XIRR"
+        icon={<PercentIcon className="h-4 w-4" />}
+        value={formatXIRR(analytics.overallXIRR)}
+        sub="Annualized return"
+      />
     </div>
   );
 }

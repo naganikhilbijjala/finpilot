@@ -10,7 +10,7 @@ export function ReturnCell({
   unreconciledUnits?: number;
 }) {
   const color =
-    value === null ? "text-gray-500" : value >= 0 ? "text-green-600" : "text-red-600";
+    value === null ? "text-gray-500" : value >= 0 ? "text-emerald-600" : "text-rose-600";
   return (
     <span className={color}>
       {value === null ? "—" : formatPercent(value * 100)}

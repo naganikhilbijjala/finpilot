@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AccountDonut } from "@/components/overview/AccountDonut";
 import { AccountHealth } from "@/components/overview/AccountHealth";
@@ -7,6 +6,8 @@ import { CombinedHoldings } from "@/components/overview/CombinedHoldings";
 import { Movers } from "@/components/overview/Movers";
 import { StatCards } from "@/components/overview/StatCards";
 import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { buildOverview, type Overview } from "@/lib/snaptrade/aggregate";
 import { isSnaptradeConfigured } from "@/lib/snaptrade/client";
 import { describeError } from "@/lib/snaptrade/errors";
@@ -38,94 +39,73 @@ export default async function OverviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-5xl mx-auto px-4 space-y-6 text-gray-900">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
-          <div className="flex gap-4 text-sm">
-            <Link href="/returns" className="text-primary-600 hover:underline">
-              Returns
-            </Link>
-            <Link href="/accounts" className="text-primary-600 hover:underline">
-              Account details
-            </Link>
-            <Link href="/dashboard" className="text-primary-600 hover:underline">
-              ← Dashboard
-            </Link>
+    <div className="space-y-6">
+      <PageHeader
+        title="Overview"
+        description={
+          overview
+            ? `Retrieved ${new Date(overview.fetchedAt).toLocaleString()}. Prices may be delayed depending on the brokerage.`
+            : "Everything you own across your brokerage accounts."
+        }
+      />
+
+      {error && <Notice tone="error">{error}</Notice>}
+
+      {overview && (
+        <>
+          {overview.failures.length > 0 && (
+            <Notice tone="warning">
+              {overview.failures.length} account
+              {overview.failures.length === 1 ? "" : "s"} couldn&apos;t be loaded and{" "}
+              {overview.failures.length === 1 ? "is" : "are"} left out of these totals:{" "}
+              {overview.failures.map((f) => f.accountName).join(", ")}.
+            </Notice>
+          )}
+          {overview.excludedAccounts.length > 0 && (
+            <Notice tone="warning">
+              Left out of totals because they use a different currency:{" "}
+              {overview.excludedAccounts.map((a) => `${a.name} (${a.currency})`).join(", ")}.
+            </Notice>
+          )}
+          {overview.unpricedCount > 0 && (
+            <Notice>
+              {overview.unpricedCount} position{overview.unpricedCount === 1 ? "" : "s"} (such as
+              options) have no price and aren&apos;t valued here.
+            </Notice>
+          )}
+
+          <StatCards o={overview} />
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card title="Net worth by account" subtitle="Hover a slice to see its share">
+              <AccountDonut accounts={overview.accounts} currency={overview.currency} />
+            </Card>
+            <Card title="Cash vs invested">
+              <CashBreakdown o={overview} />
+            </Card>
           </div>
-        </div>
 
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
-          </div>
-        )}
+          <Card
+            title="Holdings across all accounts"
+            subtitle="The same ticker is combined across accounts"
+            flush
+          >
+            <CombinedHoldings o={overview} />
+          </Card>
 
-        {overview && (
-          <>
-            <p className="text-sm text-gray-500">
-              Retrieved {new Date(overview.fetchedAt).toLocaleString()}. Prices
-              may be delayed depending on the brokerage.
-            </p>
+          <Card title="Gainers and losers" subtitle="Unrealized, since purchase">
+            <Movers
+              gainers={overview.gainers}
+              losers={overview.losers}
+              currency={overview.currency}
+            />
+          </Card>
 
-            {overview.failures.length > 0 && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                {overview.failures.length} account
-                {overview.failures.length === 1 ? "" : "s"} couldn&apos;t be
-                loaded and {overview.failures.length === 1 ? "is" : "are"} left
-                out of these totals:{" "}
-                {overview.failures.map((f) => f.accountName).join(", ")}.
-              </div>
-            )}
-            {overview.excludedAccounts.length > 0 && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                Left out of totals because they use a different currency:{" "}
-                {overview.excludedAccounts
-                  .map((a) => `${a.name} (${a.currency})`)
-                  .join(", ")}
-                .
-              </div>
-            )}
-            {overview.unpricedCount > 0 && (
-              <div className="p-4 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-700">
-                {overview.unpricedCount} position
-                {overview.unpricedCount === 1 ? "" : "s"} (such as options) have
-                no price and aren&apos;t valued here.
-              </div>
-            )}
-
-            <StatCards o={overview} />
-
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card title="Net worth by account">
-                <AccountDonut accounts={overview.accounts} currency={overview.currency} />
-              </Card>
-              <Card title="Cash vs invested">
-                <CashBreakdown o={overview} />
-              </Card>
-            </div>
-
-            <Card
-              title="Holdings across all accounts"
-              subtitle="The same ticker is combined across accounts"
-            >
-              <CombinedHoldings o={overview} />
-            </Card>
-
-            <Card title="Gainers and losers" subtitle="Unrealized, since purchase">
-              <Movers
-                gainers={overview.gainers}
-                losers={overview.losers}
-                currency={overview.currency}
-              />
-            </Card>
-
-            <Card title="Account health">
-              <AccountHealth o={overview} />
-            </Card>
-          </>
-        )}
-      </div>
+          <Card title="Account health" subtitle="Connection and sync status per account">
+            <AccountHealth o={overview} />
+          </Card>
+        </>
+      )}
     </div>
   );
 }

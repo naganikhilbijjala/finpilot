@@ -26,16 +26,19 @@ export function AccountHealth({ o }: { o: Overview }) {
   return (
     <ul className="divide-y divide-gray-100 text-sm text-gray-900">
       {rows.map((r) => (
-        <li key={r.key} className="flex items-center justify-between py-2 gap-4">
+        <li key={r.key} className="flex items-center justify-between gap-4 py-3">
           <div className="min-w-0">
-            <div className="font-medium truncate">{r.name}</div>
+            <div className="truncate font-medium">{r.name}</div>
             {r.detail && <div className="text-xs text-gray-500">{r.detail}</div>}
           </div>
           <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-              r.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+            className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+              r.ok ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
             }`}
           >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${r.ok ? "bg-emerald-500" : "bg-amber-500"}`}
+            />
             {r.status}
           </span>
         </li>

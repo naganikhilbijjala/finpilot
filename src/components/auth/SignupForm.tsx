@@ -68,11 +68,10 @@ export function SignupForm() {
   };
 
   return (
-    <div className="w-full max-w-md">
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-          Create Your Account
-        </h2>
+    <div className="mx-auto w-full max-w-md">
+      <div className="rounded-2xl border border-gray-200/80 bg-white p-8 shadow-elevated">
+        <h2 className="text-2xl font-semibold tracking-tight text-gray-900">Create your account</h2>
+        <p className="mb-6 mt-1 text-sm text-gray-500">Start tracking your portfolio in minutes.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -110,7 +109,7 @@ export function SignupForm() {
           />
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}

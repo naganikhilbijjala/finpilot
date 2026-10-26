@@ -1,27 +1,27 @@
 import { TransactionForm } from "@/components/portfolio/TransactionForm";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function AddTransactionPage() {
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          Add Stock Transaction
-        </h1>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <PageHeader
+        title="Add transaction"
+        description="Record a stock purchase to track its value, gain and annualized return."
+      />
 
-        <Card>
-          <TransactionForm />
-        </Card>
+      <Card>
+        <TransactionForm />
+      </Card>
 
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-semibold text-blue-900 mb-2">Tips:</h3>
-          <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-            <li>Enter the exact ticker symbol as traded on the stock exchange</li>
-            <li>Quantity can include fractional shares (e.g., 1.5 shares)</li>
-            <li>Purchase price should be per share, not total cost</li>
-            <li>Select the date and time when you made the purchase</li>
-          </ul>
-        </div>
+      <div className="rounded-2xl border border-primary-100 bg-primary-50/60 p-5">
+        <h3 className="mb-2 text-sm font-semibold text-primary-900">Tips</h3>
+        <ul className="list-inside list-disc space-y-1 text-sm text-primary-800">
+          <li>Enter the exact ticker symbol as traded on the stock exchange</li>
+          <li>Quantity can include fractional shares (e.g., 1.5 shares)</li>
+          <li>Purchase price should be per share, not total cost</li>
+          <li>Select the date and time when you made the purchase</li>
+        </ul>
       </div>
     </div>
   );

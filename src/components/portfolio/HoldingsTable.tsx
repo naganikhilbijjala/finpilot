@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { formatXIRR } from "@/lib/utils/xirr";
 import { formatCAGR } from "@/lib/utils/cagr";
 import type { PortfolioHolding } from "@/lib/types";
@@ -37,36 +37,36 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+      <table className="min-w-full divide-y divide-gray-100">
+        <thead className="bg-gray-50/70">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Ticker
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Quantity
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Avg Price
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Current Price
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Invested
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Current Value
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Gain/Loss
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Return
             </th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-y divide-gray-100">
           {holdings.map((holding) => {
             const isPositive = holding.absoluteGain >= 0;
             const returnMetric = holding.xirr !== null
@@ -77,13 +77,12 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
             const isExpanded = expandedTicker === holding.ticker;
 
             return (
-              <>
+              <Fragment key={holding.ticker}>
                 <tr
-                  key={holding.ticker}
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => toggleExpanded(holding.ticker)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-5 py-4 whitespace-nowrap num">
                     <div className="flex items-center gap-2">
                       <svg
                         className={`w-4 h-4 text-gray-400 transition-transform ${
@@ -110,38 +109,38 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap num text-right text-sm text-gray-900">
                     {holding.totalQuantity.toFixed(4)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap num text-right text-sm text-gray-900">
                     {formatCurrency(holding.averagePrice)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap num text-right text-sm text-gray-900">
                     {formatCurrency(holding.currentPrice)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap num text-right text-sm text-gray-900">
                     {formatCurrency(holding.totalInvested)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap num text-right text-sm font-medium text-gray-900">
                     {formatCurrency(holding.currentValue)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                  <td className="px-5 py-4 whitespace-nowrap num text-right text-sm">
                     <div
                       className={`font-medium ${
-                        isPositive ? "text-green-600" : "text-red-600"
+                        isPositive ? "text-emerald-600" : "text-rose-600"
                       }`}
                     >
                       {formatCurrency(holding.absoluteGain)}
                     </div>
                     <div
                       className={`text-xs ${
-                        isPositive ? "text-green-600" : "text-red-600"
+                        isPositive ? "text-emerald-600" : "text-rose-600"
                       }`}
                     >
                       {formatPercentage(holding.percentageGain)}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                  <td className="px-5 py-4 whitespace-nowrap num text-right text-sm font-medium text-gray-900">
                     {returnMetric}
                   </td>
                 </tr>
@@ -155,7 +154,7 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             );
           })}
         </tbody>

@@ -3,7 +3,7 @@ import { formatMoney, formatPercent } from "@/lib/utils/format";
 import type { AccountSnapshot } from "@/lib/snaptrade/types";
 
 const pnlColor = (v: number | null) =>
-  v === null ? "text-gray-500" : v >= 0 ? "text-green-600" : "text-red-600";
+  v === null ? "text-gray-500" : v >= 0 ? "text-emerald-600" : "text-rose-600";
 
 export function AccountCard({ snapshot }: { snapshot: AccountSnapshot }) {
   const { account, positions } = snapshot;
@@ -14,7 +14,7 @@ export function AccountCard({ snapshot }: { snapshot: AccountSnapshot }) {
       subtitle={`${account.institution} · ${account.maskedNumber}`}
       action={
         <div className="text-right">
-          <div className="text-xl font-semibold text-gray-900">
+          <div className="num text-xl font-semibold tracking-tight text-gray-900">
             {formatMoney(account.totalValue, account.currency)}
           </div>
           <div className="text-xs text-gray-500">
@@ -35,20 +35,20 @@ export function AccountCard({ snapshot }: { snapshot: AccountSnapshot }) {
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm text-gray-900">
-            <thead className="text-left text-gray-600 font-medium">
+            <thead className="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               <tr>
-                <th className="py-2 pr-3">Ticker</th>
-                <th className="py-2 px-3 text-right">Units</th>
-                <th className="py-2 px-3 text-right">Avg cost</th>
-                <th className="py-2 px-3 text-right">Price</th>
-                <th className="py-2 px-3 text-right">Value</th>
+                <th className="py-3 pr-3">Ticker</th>
+                <th className="py-3 px-3 text-right">Units</th>
+                <th className="py-3 px-3 text-right">Avg cost</th>
+                <th className="py-3 px-3 text-right">Price</th>
+                <th className="py-3 px-3 text-right">Value</th>
                 <th className="py-2 pl-3 text-right">Unrealized</th>
               </tr>
             </thead>
             <tbody>
               {positions.map((p) => (
-                <tr key={p.ticker} className="border-t border-gray-100">
-                  <td className="py-2 pr-3">
+                <tr key={p.ticker} className="num border-t border-gray-100 transition-colors hover:bg-gray-50/70">
+                  <td className="py-3 pr-3">
                     <div className="font-medium text-gray-900">{p.ticker}</div>
                     {p.description && (
                       <div className="text-xs text-gray-500 truncate max-w-48">
@@ -56,18 +56,18 @@ export function AccountCard({ snapshot }: { snapshot: AccountSnapshot }) {
                       </div>
                     )}
                   </td>
-                  <td className="py-2 px-3 text-right">{p.units}</td>
-                  <td className="py-2 px-3 text-right">
+                  <td className="py-3 px-3 text-right">{p.units}</td>
+                  <td className="py-3 px-3 text-right">
                     {formatMoney(p.averageCost, p.currency)}
                   </td>
-                  <td className="py-2 px-3 text-right">
+                  <td className="py-3 px-3 text-right">
                     {formatMoney(p.price, p.currency)}
                   </td>
-                  <td className="py-2 px-3 text-right">
+                  <td className="py-3 px-3 text-right">
                     {formatMoney(p.marketValue, p.currency)}
                   </td>
                   <td
-                    className={`py-2 pl-3 text-right ${pnlColor(p.unrealizedPnl)}`}
+                    className={`py-3 pl-3 text-right ${pnlColor(p.unrealizedPnl)}`}
                   >
                     <div>{formatMoney(p.unrealizedPnl, p.currency)}</div>
                     <div className="text-xs">{formatPercent(p.unrealizedPct)}</div>

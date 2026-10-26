@@ -10,7 +10,7 @@ const CLOSED_GRID =
   "grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_0.8fr_1fr_1.6fr] gap-3 items-center min-w-[860px]";
 
 const gainClass = (v: number | null) =>
-  v === null ? "text-gray-500" : v >= 0 ? "text-green-600" : "text-red-600";
+  v === null ? "text-gray-500" : v >= 0 ? "text-emerald-600" : "text-rose-600";
 
 function Cells({ t, label, variant }: { t: TickerReturn; label: string; variant: Variant }) {
   const total = (
@@ -66,7 +66,7 @@ function Cells({ t, label, variant }: { t: TickerReturn; label: string; variant:
 function Header({ variant, grid }: { variant: Variant; grid: string }) {
   const totalTitle = "Gain divided by total money invested; not annualized";
   return (
-    <div className={`${grid} py-2 text-gray-600 font-medium`}>
+    <div className={`${grid} py-2 text-xs font-medium uppercase tracking-wider text-gray-500`}>
       <span>Ticker</span>
       {variant === "closed" ? (
         <>
@@ -104,18 +104,18 @@ export function TickerReturns({
   const grid = variant === "closed" ? CLOSED_GRID : OPEN_GRID;
 
   return (
-    <div className="overflow-x-auto text-sm text-gray-900">
+    <div className="overflow-x-auto px-5 pb-5 text-sm text-gray-900 sm:px-6">
       <Header variant={variant} grid={grid} />
       {items.map((t) => (
-        <details key={t.ticker} className="border-t border-gray-100 group">
-          <summary className={`${grid} py-2 cursor-pointer list-none`}>
+        <details key={t.ticker} className="group border-t border-gray-100">
+          <summary className={`${grid} num cursor-pointer list-none py-3 transition-colors hover:bg-gray-50/70`}>
             <Cells
               t={t}
               variant={variant}
               label={t.byAccount.length > 1 ? `${t.ticker} ▸ ${t.byAccount.length} accts` : t.ticker}
             />
           </summary>
-          <div className="bg-gray-50 rounded mb-2">
+          <div className="num mb-2 rounded-xl bg-gray-50">
             {t.byAccount.map((a) => (
               <div key={a.accountId} className={`${grid} py-1.5 pl-4 text-xs`}>
                 <Cells t={a} variant={variant} label={a.accountName ?? ""} />

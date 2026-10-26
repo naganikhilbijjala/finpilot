@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Notice } from "@/components/ui/Notice";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { PerformanceExplorer } from "@/components/performance/PerformanceExplorer";
 import { loadPerformance, type PerformanceData } from "@/lib/returns/loadPerformance";
 import { isSnaptradeConfigured } from "@/lib/snaptrade/client";
@@ -35,46 +36,33 @@ export default async function PerformancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-5xl mx-auto px-4 space-y-6 text-gray-900">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Performance</h1>
-          <div className="flex gap-4 text-sm">
-            <Link href="/returns" className="text-primary-600 hover:underline">
-              Returns
-            </Link>
-            <Link href="/dashboard" className="text-primary-600 hover:underline">
-              ← Dashboard
-            </Link>
-          </div>
-        </div>
-
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {data && (
+    <div className="space-y-6">
+      <PageHeader
+        title="Performance"
+        description={
           <>
-            <p className="text-sm text-gray-600">
-              Returns are <span className="font-medium text-gray-900">time-weighted</span>, so when you
-              deposited doesn&apos;t help or hurt them, which makes them comparable to an index. Benchmarks
-              include reinvested dividends (SPY, QQQ and VTI total return). Account values are rebuilt from
-              your transactions and Yahoo Finance prices, before taxes.
-            </p>
-
-            {data.failures.length > 0 && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                Left out because their data couldn&apos;t be loaded:{" "}
-                {data.failures.map((f) => `${f.accountName} (${f.message})`).join("; ")}.
-              </div>
-            )}
-
-            <PerformanceExplorer data={data} />
+            Returns are <span className="font-medium text-gray-700">time-weighted</span>, so when you
+            deposited doesn&apos;t help or hurt them, which makes them comparable to an index.
+            Benchmarks include reinvested dividends (SPY, QQQ and VTI total return). Account values
+            are rebuilt from your transactions and Yahoo Finance prices, before taxes.
           </>
-        )}
-      </div>
+        }
+      />
+
+      {error && <Notice tone="error">{error}</Notice>}
+
+      {data && (
+        <>
+          {data.failures.length > 0 && (
+            <Notice tone="warning">
+              Left out because their data couldn&apos;t be loaded:{" "}
+              {data.failures.map((f) => `${f.accountName} (${f.message})`).join("; ")}.
+            </Notice>
+          )}
+
+          <PerformanceExplorer data={data} />
+        </>
+      )}
     </div>
   );
 }

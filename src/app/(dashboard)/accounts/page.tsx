@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AccountCard } from "@/components/accounts/AccountCard";
 import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { isSnaptradeConfigured } from "@/lib/snaptrade/client";
 import { checkOwner } from "@/lib/snaptrade/owner";
 import { describeError } from "@/lib/snaptrade/errors";
@@ -33,52 +34,37 @@ export default async function AccountsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Brokerage Accounts</h1>
-          <Link href="/dashboard" className="text-sm text-primary-600 hover:underline">
-            ← Dashboard
-          </Link>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Brokerage accounts"
+        description={
+          snapshot
+            ? `Retrieved ${new Date(snapshot.fetchedAt).toLocaleString()}. Prices may be delayed depending on the brokerage.`
+            : "Positions in each connected account."
+        }
+      />
 
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
-          </div>
-        )}
+      {error && <Notice tone="error">{error}</Notice>}
 
-        {snapshot && (
-          <>
-            <p className="text-sm text-gray-500">
-              Retrieved {new Date(snapshot.fetchedAt).toLocaleString()}. Prices
-              may be delayed depending on the brokerage.
-            </p>
+      {snapshot && (
+        <>
+          {snapshot.failures.map((f) => (
+            <Notice key={f.accountId} tone="warning">
+              Couldn&apos;t load <span className="font-medium">{f.accountName}</span>: {f.message}
+            </Notice>
+          ))}
 
-            {snapshot.failures.map((f) => (
-              <div
-                key={f.accountId}
-                className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800"
-              >
-                Couldn&apos;t load <span className="font-medium">{f.accountName}</span>
-                : {f.message}
-              </div>
-            ))}
-
-            {snapshot.accounts.length === 0 && snapshot.failures.length === 0 ? (
-              <Card>
-                <p className="text-sm text-gray-600">
-                  No brokerage accounts found on your SnapTrade account.
-                </p>
-              </Card>
-            ) : (
-              snapshot.accounts.map((s) => (
-                <AccountCard key={s.account.id} snapshot={s} />
-              ))
-            )}
-          </>
-        )}
-      </div>
+          {snapshot.accounts.length === 0 && snapshot.failures.length === 0 ? (
+            <Card>
+              <p className="text-sm text-gray-600">
+                No brokerage accounts found on your SnapTrade account.
+              </p>
+            </Card>
+          ) : (
+            snapshot.accounts.map((s) => <AccountCard key={s.account.id} snapshot={s} />)
+          )}
+        </>
+      )}
     </div>
   );
 }

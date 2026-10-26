@@ -1,51 +1,37 @@
+import { StatCard } from "@/components/ui/StatCard";
+import { ChartIcon, LayersIcon, WalletIcon, SparkIcon } from "@/components/ui/Icons";
 import { formatMoney, formatPercent } from "@/lib/utils/format";
 import type { Overview } from "@/lib/snaptrade/aggregate";
 
-function Stat({
-  label,
-  value,
-  sub,
-  subClass = "text-gray-500",
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  subClass?: string;
-}) {
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-      <div className="text-sm text-gray-600">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-gray-900">{value}</div>
-      {sub && <div className={`mt-1 text-sm ${subClass}`}>{sub}</div>}
-    </div>
-  );
-}
-
 export function StatCards({ o }: { o: Overview }) {
-  const gainClass =
-    o.unrealizedPnl >= 0 ? "text-green-600" : "text-red-600";
+  const gainTone = o.unrealizedPnl >= 0 ? "positive" : "negative";
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <Stat
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <StatCard
+        accent
         label="Net worth"
+        icon={<WalletIcon className="h-4 w-4" />}
         value={formatMoney(o.netWorth, o.currency)}
         sub={`${o.accounts.length} account${o.accounts.length === 1 ? "" : "s"}`}
       />
-      <Stat
+      <StatCard
         label="Invested"
+        icon={<ChartIcon className="h-4 w-4" />}
         value={formatMoney(o.invested, o.currency)}
         sub={`${o.holdings.length} holding${o.holdings.length === 1 ? "" : "s"}`}
       />
-      <Stat
+      <StatCard
         label="Cash"
+        icon={<LayersIcon className="h-4 w-4" />}
         value={formatMoney(o.cash, o.currency)}
         sub={`${o.cashPct.toFixed(1)}% of net worth`}
       />
-      <Stat
+      <StatCard
         label="Unrealized gain"
+        icon={<SparkIcon className="h-4 w-4" />}
         value={formatMoney(o.unrealizedPnl, o.currency)}
         sub={`${formatPercent(o.unrealizedPct)} on cost`}
-        subClass={gainClass}
+        tone={gainTone}
       />
     </div>
   );
