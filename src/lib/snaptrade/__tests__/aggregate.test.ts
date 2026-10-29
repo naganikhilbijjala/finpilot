@@ -5,6 +5,7 @@ import type { AccountSnapshot, PositionView, SnapshotResult } from "../types";
 const pos = (ticker: string, units: number, price: number | null, avg: number | null, over: Partial<PositionView> = {}): PositionView => ({
   ticker,
   description: null,
+  kind: "stock",
   units,
   price,
   averageCost: avg,

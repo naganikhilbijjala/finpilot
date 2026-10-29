@@ -70,6 +70,7 @@ export function normalizePosition(position: AccountPosition): PositionView | nul
       "description" in instrument && typeof instrument.description === "string"
         ? instrument.description
         : null,
+    kind: instrument.kind ? String(instrument.kind).toLowerCase() : null,
     units,
     price,
     averageCost,

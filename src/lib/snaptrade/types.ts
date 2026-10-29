@@ -16,6 +16,8 @@ export interface AccountView {
 export interface PositionView {
   ticker: string;
   description: string | null;
+  /** SnapTrade instrument kind (stock, etf, option, ...), lowercase. */
+  kind: string | null;
   units: number;
   price: number | null;
   averageCost: number | null;

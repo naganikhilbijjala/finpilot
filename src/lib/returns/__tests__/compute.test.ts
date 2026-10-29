@@ -26,6 +26,7 @@ const act = (
 const pos = (ticker: string, units: number, price: number | null): PositionView => ({
   ticker,
   description: null,
+  kind: "stock",
   units,
   price,
   averageCost: null,
