@@ -6,6 +6,7 @@ import {
   LogoutIcon,
   PercentIcon,
   PlusIcon,
+  SparkIcon,
   UploadIcon,
   WalletIcon,
 } from "@/components/ui/Icons";
@@ -28,6 +29,10 @@ function buildSections(isOwner: boolean): NavSection[] {
       ],
     });
   }
+  sections.push({
+    title: "Research",
+    items: [{ href: "/screener", label: "Screener", icon: <SparkIcon /> }],
+  });
   sections.push({
     title: "Manual portfolio",
     items: [
