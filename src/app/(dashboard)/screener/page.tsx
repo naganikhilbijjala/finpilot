@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ScreenerTable } from "@/components/screener/ScreenerTable";
+import { StockSearch } from "@/components/screener/StockSearch";
 import { SyncButton } from "@/components/screener/SyncButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -43,7 +44,6 @@ export default async function ScreenerPage({
   const criteria = parseCriteria(params);
   const results = runScreen(stocks, criteria);
   const hasCriteria = Object.keys(criteria).length > 0;
-  const shown = hasCriteria ? results : results.slice(0, 0);
 
   // Form defaults mirror the active criteria (percent fields as whole numbers).
   const pctVal = (v?: number) => (v === undefined ? "" : String(Math.round(v * 100)));
@@ -71,6 +71,10 @@ export default async function ScreenerPage({
             ` ${locked} are without data from the provider and are left out of results.`}
         </Notice>
       )}
+
+      <div className="max-w-md">
+        <StockSearch />
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {Object.entries(PRESETS).map(([key, p]) => (
@@ -130,10 +134,10 @@ export default async function ScreenerPage({
 
       <Card
         flush
-        title={hasCriteria ? `${shown.length} matching` : "Pick a preset or set criteria"}
-        subtitle="Sorted by PEG, lowest first."
+        title={hasCriteria ? `${results.length} matching` : `All ${results.length} loaded stocks`}
+        subtitle="Click a column header to sort. Starts with PEG, lowest first."
       >
-        {hasCriteria && <ScreenerTable results={shown} />}
+        <ScreenerTable results={results} />
       </Card>
     </div>
   );

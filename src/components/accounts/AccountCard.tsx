@@ -1,3 +1,4 @@
+import { TickerLink } from "@/components/screener/TickerLink";
 import { Card } from "@/components/ui/Card";
 import { formatMoney, formatPercent } from "@/lib/utils/format";
 import type { AccountSnapshot } from "@/lib/snaptrade/types";
@@ -63,7 +64,9 @@ export function AccountCard({ snapshot }: { snapshot: AccountSnapshot }) {
                     }`}
                   >
                     <td className="py-3 pr-3">
-                      <div className="font-medium text-gray-900">{p.ticker}</div>
+                      <div className="font-medium text-gray-900">
+                        <TickerLink ticker={p.ticker} />
+                      </div>
                       {p.description && (
                         <div className="text-xs text-gray-500 truncate max-w-48">
                           {p.description}

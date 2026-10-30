@@ -1,3 +1,4 @@
+import { TickerLink } from "@/components/screener/TickerLink";
 import { categoryColor } from "@/components/charts/theme";
 import { formatMoney, formatPercent } from "@/lib/utils/format";
 import type { Overview } from "@/lib/snaptrade/aggregate";
@@ -23,7 +24,10 @@ export function CombinedHoldings({
     <div className="space-y-4 text-gray-900">
       <div className="flex flex-wrap gap-3 px-5 sm:px-6">
         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
-          Largest: <span className="font-semibold text-gray-900">{top1?.ticker} ({top1?.pct.toFixed(1)}%)</span>
+          Largest:{" "}
+          <span className="font-semibold text-gray-900">
+            {top1 && <TickerLink ticker={top1.ticker} />} ({top1?.pct.toFixed(1)}%)
+          </span>
         </span>
         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
           Top 5 together: <span className="font-semibold text-gray-900">{top5Pct.toFixed(1)}%</span> of invested
@@ -51,7 +55,9 @@ export function CombinedHoldings({
                       {h.ticker.slice(0, 4)}
                     </span>
                     <div className="min-w-0">
-                      <div className="font-semibold">{h.ticker}</div>
+                      <div className="font-semibold">
+                        <TickerLink ticker={h.ticker} />
+                      </div>
                       <div className="max-w-[16rem] truncate text-xs text-gray-500">
                         {h.accounts
                           .map((a) => `${a.accountName} ${a.units.toFixed(3).replace(/\.?0+$/, "")}`)

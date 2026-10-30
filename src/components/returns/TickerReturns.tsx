@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { formatMoney, formatPercent } from "@/lib/utils/format";
 import type { CombinedTickerReturn, TickerReturn } from "@/lib/returns/compute";
+import { TickerLink } from "@/components/screener/TickerLink";
 import { ReturnCell } from "./ReturnCell";
 
 type Variant = "open" | "closed";
@@ -12,7 +14,7 @@ const CLOSED_GRID =
 const gainClass = (v: number | null) =>
   v === null ? "text-gray-500" : v >= 0 ? "text-emerald-600" : "text-rose-600";
 
-function Cells({ t, label, variant }: { t: TickerReturn; label: string; variant: Variant }) {
+function Cells({ t, label, variant }: { t: TickerReturn; label: ReactNode; variant: Variant }) {
   const total = (
     <span className={`text-right ${gainClass(t.gain)}`}>
       {t.gain !== null && t.invested > 0 ? formatPercent((t.gain / t.invested) * 100) : "—"}
@@ -112,7 +114,12 @@ export function TickerReturns({
             <Cells
               t={t}
               variant={variant}
-              label={t.byAccount.length > 1 ? `${t.ticker} ▸ ${t.byAccount.length} accts` : t.ticker}
+              label={
+                <>
+                  <TickerLink ticker={t.ticker} />
+                  {t.byAccount.length > 1 && ` ▸ ${t.byAccount.length} accts`}
+                </>
+              }
             />
           </summary>
           <div className="num mb-2 rounded-xl bg-gray-50">

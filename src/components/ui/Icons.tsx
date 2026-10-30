@@ -124,3 +124,9 @@ export const AlertIcon = (p: IconProps) => (
     <path d="M12 10v4M12 17h.01" />
   </Icon>
 );
+export const SearchIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m20 20-4.2-4.2" />
+  </Icon>
+);

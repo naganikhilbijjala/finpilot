@@ -1,3 +1,4 @@
+import { TickerLink } from "@/components/screener/TickerLink";
 import { ArrowDownIcon, ArrowUpIcon } from "@/components/ui/Icons";
 import { formatMoney, formatPercent } from "@/lib/utils/format";
 import type { HoldingAgg } from "@/lib/snaptrade/aggregate";
@@ -34,7 +35,9 @@ function List({
           {items.map((h) => (
             <li key={h.ticker}>
               <div className="flex items-baseline justify-between gap-3 text-sm text-gray-900">
-                <span className="font-semibold">{h.ticker}</span>
+                <span className="font-semibold">
+                  <TickerLink ticker={h.ticker} />
+                </span>
                 <span className={`num ${tone.text}`}>
                   {formatMoney(h.unrealizedPnl, currency)}{" "}
                   <span className="text-xs opacity-80">({formatPercent(h.unrealizedPct)})</span>

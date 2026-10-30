@@ -10,6 +10,7 @@ import {
   UploadIcon,
   WalletIcon,
 } from "@/components/ui/Icons";
+import { StockSearch } from "@/components/screener/StockSearch";
 import { Logo } from "./Logo";
 import { MobileNav } from "./MobileNav";
 import { NavLinks, type NavSection } from "./NavLinks";
@@ -55,6 +56,9 @@ function SidebarBody({
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1">
+        <div className="mb-5 px-1">
+          <StockSearch />
+        </div>
         <NavLinks sections={buildSections(isOwner)} />
       </div>
       <div className="mt-6 border-t border-gray-200/80 pt-4">

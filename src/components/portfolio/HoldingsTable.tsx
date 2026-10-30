@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { formatXIRR } from "@/lib/utils/xirr";
 import { formatCAGR } from "@/lib/utils/cagr";
 import type { PortfolioHolding } from "@/lib/types";
+import { TickerLink } from "@/components/screener/TickerLink";
 import { HoldingDetails } from "./HoldingDetails";
 
 interface HoldingsTableProps {
@@ -101,7 +102,10 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                       </svg>
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {holding.ticker}
+                          <TickerLink
+                            ticker={holding.ticker}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                         </div>
                         <div className="text-xs text-gray-500">
                           {holding.transactions.length} transaction(s)
