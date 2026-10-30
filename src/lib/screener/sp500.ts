@@ -5,8 +5,8 @@ export interface Constituent {
   symbol: string;
   name: string;
   sector: string;
-  /** SEC Central Index Key, for EDGAR filings. */
-  cik: number;
+  /** SEC Central Index Key, for EDGAR filings. Null when not yet known. */
+  cik: number | null;
 }
 
 export const SP500: Constituent[] = [

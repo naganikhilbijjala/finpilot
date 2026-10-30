@@ -2,7 +2,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchFundamentals, ProviderLimitError, RESTRICTED } from "./provider";
 import { fetchRevenueGrowth } from "./edgar";
-import { SP500, type Constituent } from "./sp500";
+import { getUniverse } from "./custom";
+import type { Constituent } from "./sp500";
 
 // Each stock costs one Finnhub call (60/minute free) and one SEC EDGAR call.
 export const DEFAULT_BATCH = 40;
@@ -27,7 +28,8 @@ export async function syncBatch(limit = DEFAULT_BATCH): Promise<SyncSummary> {
   if (error) throw error;
 
   const fetchedAt = new Map(existing.map((r) => [r.symbol as string, r.fetched_at as string]));
-  const queue: Constituent[] = [...SP500]
+  const universe = await getUniverse();
+  const queue: Constituent[] = [...universe]
     .sort((a, b) =>
       (fetchedAt.get(a.symbol) ?? "").localeCompare(fetchedAt.get(b.symbol) ?? "")
     )
@@ -66,6 +68,6 @@ export async function syncBatch(limit = DEFAULT_BATCH): Promise<SyncSummary> {
     );
   }
 
-  const remaining = SP500.filter((c) => !fetchedAt.has(c.symbol)).length - synced - restricted;
+  const remaining = universe.filter((c) => !fetchedAt.has(c.symbol)).length - synced - restricted;
   return { synced, restricted, failed, hitLimit, remaining: Math.max(0, remaining) };
 }

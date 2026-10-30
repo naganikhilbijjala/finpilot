@@ -3,22 +3,54 @@
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState } from "react";
 import { SearchIcon } from "@/components/ui/Icons";
-import { searchStocks } from "@/lib/screener/symbols";
+import { looksLikeTicker, normalizeSymbol, searchStocks } from "@/lib/screener/symbols";
+import { useUniverse } from "./UniverseProvider";
 
 /** Search S&P 500 stocks by ticker or name. Results list inline so it works inside the scrolling sidebar. */
 export function StockSearch({ autoFocus = false }: { autoFocus?: boolean }) {
   const router = useRouter();
   const listId = useId();
+  const universe = useUniverse();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
-  const results = useMemo(() => searchStocks(query, 6), [query]);
+  const results = useMemo(() => searchStocks(query, 6, universe), [query, universe]);
   const searching = query.trim().length > 0;
+  // Offer to add a ticker that isn't already an exact match in the universe.
+  const candidate = normalizeSymbol(query);
+  const canAdd =
+    searching && looksLikeTicker(query) && !results.some((c) => c.symbol === candidate);
 
   function go(symbol: string) {
     setQuery("");
     setActive(0);
     router.push(`/screener/${symbol}`);
+  }
+
+  async function add() {
+    setAdding(true);
+    setAddError(null);
+    try {
+      const res = await fetch("/api/screener/stocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol: candidate }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setAddError(body.message ?? "Couldn't add that stock");
+        return;
+      }
+      go(body.symbol);
+      // Refresh so the sidebar's ticker list includes the new stock.
+      router.refresh();
+    } catch {
+      setAddError("Couldn't add that stock");
+    } finally {
+      setAdding(false);
+    }
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -31,6 +63,9 @@ export function StockSearch({ autoFocus = false }: { autoFocus?: boolean }) {
     } else if (e.key === "Enter" && results[active]) {
       e.preventDefault();
       go(results[active].symbol);
+    } else if (e.key === "Enter" && canAdd && !adding) {
+      e.preventDefault();
+      add();
     } else if (e.key === "Escape") {
       setQuery("");
     }
@@ -47,10 +82,11 @@ export function StockSearch({ autoFocus = false }: { autoFocus?: boolean }) {
           onChange={(e) => {
             setQuery(e.target.value);
             setActive(0);
+            setAddError(null);
           }}
           onKeyDown={onKeyDown}
-          placeholder="Search stocks (e.g. AAPL, Apple)"
-          aria-label="Search S&P 500 stocks"
+          placeholder="Search or add a stock (e.g. SOFI)"
+          aria-label="Search stocks"
           role="combobox"
           aria-expanded={searching}
           aria-controls={listId}
@@ -62,10 +98,8 @@ export function StockSearch({ autoFocus = false }: { autoFocus?: boolean }) {
 
       {searching && (
         <ul id={listId} role="listbox" className="mt-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-card">
-          {results.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-gray-500">
-              No S&amp;P 500 match. Only S&amp;P 500 stocks have fundamentals pages.
-            </li>
+          {results.length === 0 && !canAdd ? (
+            <li className="px-3 py-2 text-xs text-gray-500">No match in your stocks.</li>
           ) : (
             results.map((c, i) => (
               <li
@@ -87,6 +121,20 @@ export function StockSearch({ autoFocus = false }: { autoFocus?: boolean }) {
                 </button>
               </li>
             ))
+          )}
+          {canAdd && (
+            <li className="border-t border-gray-100">
+              <button
+                type="button"
+                onClick={add}
+                disabled={adding}
+                className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm text-primary-700 hover:bg-primary-50 disabled:opacity-60"
+              >
+                <span className="font-semibold">{adding ? "Adding…" : `Add ${candidate}`}</span>
+                {!adding && <span className="text-xs text-gray-500">to my stocks</span>}
+              </button>
+              {addError && <p role="alert" className="px-3 pb-2 text-xs text-rose-600">{addError}</p>}
+            </li>
           )}
         </ul>
       )}

@@ -9,14 +9,13 @@ import { Notice } from "@/components/ui/Notice";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { parseCriteria } from "@/lib/screener/params";
 import { PRESETS, runScreen } from "@/lib/screener/screen";
-import { SP500 } from "@/lib/screener/sp500";
+import { getUniverse } from "@/lib/screener/custom";
 import { hasFundamentals, type StoredData } from "@/lib/screener/types";
 import { checkOwner } from "@/lib/snaptrade/owner";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const SECTORS = [...new Set(SP500.map((c) => c.sector))].sort();
 const inputClass =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900";
 
@@ -33,6 +32,7 @@ export default async function ScreenerPage({
   if (!user) redirect("/login");
 
   const owner = await checkOwner();
+  const universe = await getUniverse();
   const { data, error } = await supabase
     .from("stock_fundamentals")
     .select("data, fetched_at");
@@ -43,6 +43,7 @@ export default async function ScreenerPage({
   const loadedAt = (data ?? []).map((r) => r.fetched_at as string).sort().at(-1);
   const criteria = parseCriteria(params);
   const results = runScreen(stocks, criteria);
+  const sectors = [...new Set(stocks.map((s) => s.sector).filter((x): x is string => Boolean(x)))].sort();
   const hasCriteria = Object.keys(criteria).length > 0;
 
   // Form defaults mirror the active criteria (percent fields as whole numbers).
@@ -52,8 +53,8 @@ export default async function ScreenerPage({
     <div className="space-y-6">
       <PageHeader
         title="Stock screener"
-        description="Filter S&P 500 stocks on the fundamentals Lynch, Buffett and Greenblatt look at. A shortlist to research, not a buy list."
-        actions={owner.ok ? <SyncButton remaining={Math.max(0, SP500.length - rows.length)} /> : undefined}
+        description="Filter S&P 500 and S&P 400 stocks, plus any you add, on the fundamentals Lynch, Buffett and Greenblatt look at. A shortlist to research, not a buy list."
+        actions={owner.ok ? <SyncButton remaining={Math.max(0, universe.length - rows.length)} /> : undefined}
       />
 
       {error && (
@@ -63,9 +64,9 @@ export default async function ScreenerPage({
         </Notice>
       )}
 
-      {!error && stocks.length < SP500.length && (
+      {!error && stocks.length < universe.length && (
         <Notice tone="warning">
-          {stocks.length} of {SP500.length} stocks have fundamentals
+          {stocks.length} of {universe.length} stocks have fundamentals
           {loadedAt && ` (latest ${new Date(loadedAt).toLocaleDateString()})`}.
           {locked > 0 &&
             ` ${locked} are without data from the provider and are left out of results.`}
@@ -118,7 +119,7 @@ export default async function ScreenerPage({
             Sector
             <select name="sector" defaultValue={criteria.sector ?? ""} className={`${inputClass} mt-1`}>
               <option value="">Any</option>
-              {SECTORS.map((s) => (
+              {sectors.map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>

@@ -6,10 +6,11 @@ import { IncomeSankey } from "@/components/screener/IncomeSankey";
 import { Card } from "@/components/ui/Card";
 import { Notice } from "@/components/ui/Notice";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { fetchStatements } from "@/lib/screener/edgar";
+import { getUniverse } from "@/lib/screener/custom";
+import { fetchStatements, NoCikError } from "@/lib/screener/edgar";
 import { CATEGORY_LABELS } from "@/lib/screener/metrics";
 import { buildIncomeSankey } from "@/lib/screener/sankey";
-import { SP500 } from "@/lib/screener/sp500";
+import { findConstituent } from "@/lib/screener/symbols";
 import { hasFundamentals, type StoredData } from "@/lib/screener/types";
 import { createClient } from "@/lib/supabase/server";
 import { formatCompactMoney } from "@/lib/utils/format";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 // Filings change a few times a year; the SEC response is several MB, so cache the parsed result.
 const getStatements = unstable_cache(
-  (symbol: string, cik: number) => fetchStatements(symbol, cik),
+  (symbol: string, cik: number | null) => fetchStatements(symbol, cik),
   ["screener-statements"],
   { revalidate: 60 * 60 * 24 }
 );
@@ -34,7 +35,7 @@ export default async function StockPage({
 }) {
   const { symbol: raw } = await params;
   const symbol = decodeURIComponent(raw).toUpperCase();
-  const constituent = SP500.find((c) => c.symbol === symbol);
+  const constituent = findConstituent(symbol, await getUniverse());
   if (!constituent) notFound();
 
   const supabase = await createClient();
@@ -56,8 +57,12 @@ export default async function StockPage({
   try {
     statements = await getStatements(symbol, constituent.cik);
   } catch (err) {
-    console.error(`Statements load failed for ${symbol}:`, err);
-    error = "Couldn't load filings from the SEC right now. Try again in a minute.";
+    if (err instanceof NoCikError) {
+      error = `We don't have ${symbol}'s SEC company number yet, so filings charts aren't available. Set SEC_USER_AGENT to let the app look it up.`;
+    } else {
+      console.error(`Statements load failed for ${symbol}:`, err);
+      error = "Couldn't load filings from the SEC right now. Try again in a minute.";
+    }
   }
 
   const latest = statements?.latest ?? null;
