@@ -18,7 +18,7 @@ export interface RevenueGrowth {
 }
 
 // Companies label revenue differently, and change labels over the years.
-const REVENUE_TAGS = [
+export const REVENUE_TAGS = [
   "Revenues",
   "RevenueFromContractWithCustomerExcludingAssessedTax",
   "RevenueFromContractWithCustomerIncludingAssessedTax",
@@ -47,8 +47,8 @@ export function annualSeries(entries: FactEntry[]): Map<string, number> {
  * Uses the tag reported most recently as the base, then fills older years
  * from other tags where the base has a gap.
  */
-export function revenueSeries(usGaap: UsGaap): Map<string, number> | null {
-  const candidates = REVENUE_TAGS.map((t) => annualSeries(usGaap[t]?.units?.USD ?? [])).filter(
+export function seriesFromTags(usGaap: UsGaap, tags: string[]): Map<string, number> | null {
+  const candidates = tags.map((t) => annualSeries(usGaap[t]?.units?.USD ?? [])).filter(
     (s) => s.size > 0
   );
   if (candidates.length === 0) return null;
@@ -65,6 +65,8 @@ export function revenueSeries(usGaap: UsGaap): Map<string, number> | null {
   }
   return merged;
 }
+
+export const revenueSeries = (usGaap: UsGaap) => seriesFromTags(usGaap, REVENUE_TAGS);
 
 /** CAGR over `years` ending at the latest annual figure; null if history is too short or a value is non-positive. */
 export function cagr(series: Map<string, number>, years: number): number | null {

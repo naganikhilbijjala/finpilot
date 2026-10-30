@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CATEGORY_LABELS } from "@/lib/screener/metrics";
 import type { ScreenResult } from "@/lib/screener/screen";
 
@@ -29,7 +30,9 @@ export function ScreenerTable({ results }: { results: ScreenResult[] }) {
           {results.map(({ stock: s }) => (
             <tr key={s.symbol} className="num border-t border-gray-100 transition-colors hover:bg-gray-50/70">
               <td className="py-3 pl-5 pr-3 sm:pl-6">
-                <div className="font-medium">{s.symbol}</div>
+                <Link href={`/screener/${s.symbol}`} className="font-medium text-primary-600 hover:underline">
+                  {s.symbol}
+                </Link>
                 <div className="max-w-48 truncate text-xs text-gray-500">{s.name}</div>
               </td>
               <td className="py-3 px-3 text-xs text-gray-600">{CATEGORY_LABELS[s.category]}</td>
