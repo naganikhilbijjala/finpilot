@@ -7,10 +7,10 @@ export interface ScreenCriteria {
   minRoic?: number;
   minRoe?: number;
   minEpsCagr?: number;
+  minRevCagr5y?: number;
+  minRevCagr10y?: number;
   minFcfYield?: number;
   minNetMargin?: number;
-  /** Require a flat or shrinking share count (no dilution). */
-  noDilution?: boolean;
   category?: LynchCategory;
   sector?: string;
 }
@@ -46,9 +46,10 @@ export function screenStock(
   if (c.minRoic !== undefined) add(`ROIC ≥ ${pct(c.minRoic)}`, atLeast(stock.roic, c.minRoic));
   if (c.minRoe !== undefined) add(`ROE ≥ ${pct(c.minRoe)}`, atLeast(stock.roe, c.minRoe));
   if (c.minEpsCagr !== undefined) add(`EPS growth ≥ ${pct(c.minEpsCagr)}/yr`, atLeast(stock.epsCagr5y, c.minEpsCagr));
+  if (c.minRevCagr5y !== undefined) add(`Revenue growth 5y ≥ ${pct(c.minRevCagr5y)}/yr`, atLeast(stock.revenueCagr5y ?? null, c.minRevCagr5y));
+  if (c.minRevCagr10y !== undefined) add(`Revenue growth 10y ≥ ${pct(c.minRevCagr10y)}/yr`, atLeast(stock.revenueCagr10y ?? null, c.minRevCagr10y));
   if (c.minFcfYield !== undefined) add(`FCF yield ≥ ${pct(c.minFcfYield)}`, atLeast(stock.fcfYield, c.minFcfYield));
   if (c.minNetMargin !== undefined) add(`Net margin ≥ ${pct(c.minNetMargin)}`, atLeast(stock.netMargin, c.minNetMargin));
-  if (c.noDilution) add("No dilution", atMost(stock.shareCountChange, 0));
   if (c.category) add(`Type: ${c.category}`, stock.category === c.category);
   if (c.sector) add(`Sector: ${c.sector}`, stock.sector === c.sector);
 
@@ -75,8 +76,13 @@ export const PRESETS: Record<string, { label: string; blurb: string; criteria: S
   },
   quality: {
     label: "Quality compounders",
-    blurb: "High returns on capital, real margins, no dilution.",
-    criteria: { minRoic: 0.15, minNetMargin: 0.1, maxDebtToEquity: 1, noDilution: true },
+    blurb: "High returns on capital, real margins, modest debt.",
+    criteria: { minRoic: 0.15, minNetMargin: 0.1, maxDebtToEquity: 1 },
+  },
+  longTerm: {
+    label: "Long-term growers",
+    blurb: "Revenue up 10%+ a year for a decade, high returns on capital, modest debt.",
+    criteria: { minRevCagr10y: 0.1, minRoic: 0.12, maxDebtToEquity: 1 },
   },
   value: {
     label: "Cheap with cash flow",

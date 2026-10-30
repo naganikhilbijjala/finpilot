@@ -18,10 +18,11 @@ export function ScreenerTable({ results }: { results: ScreenResult[] }) {
             <th className="py-3 px-3 text-right">P/E</th>
             <th className="py-3 px-3 text-right">PEG</th>
             <th className="py-3 px-3 text-right">EPS growth/yr</th>
+            <th className="py-3 px-3 text-right">Rev 5y</th>
+            <th className="py-3 px-3 text-right" title="From SEC filings; n/a when there are under 10 years of history">Rev 10y</th>
             <th className="py-3 px-3 text-right">D/E</th>
             <th className="py-3 px-3 text-right">ROIC</th>
-            <th className="py-3 px-3 text-right">FCF yield</th>
-            <th className="py-3 pl-3 pr-5 text-right sm:pr-6">Shares YoY</th>
+            <th className="py-3 pl-3 pr-5 text-right sm:pr-6">FCF yield</th>
           </tr>
         </thead>
         <tbody>
@@ -35,10 +36,11 @@ export function ScreenerTable({ results }: { results: ScreenResult[] }) {
               <td className="py-3 px-3 text-right">{x(s.pe)}</td>
               <td className="py-3 px-3 text-right">{x(s.peg)}</td>
               <td className="py-3 px-3 text-right">{pct(s.epsCagr5y)}</td>
+              <td className="py-3 px-3 text-right">{pct(s.revenueCagr5y ?? null)}</td>
+              <td className="py-3 px-3 text-right">{pct(s.revenueCagr10y ?? null)}</td>
               <td className="py-3 px-3 text-right">{x(s.debtToEquity)}</td>
               <td className="py-3 px-3 text-right">{pct(s.roic)}</td>
-              <td className="py-3 px-3 text-right">{pct(s.fcfYield)}</td>
-              <td className="py-3 pl-3 pr-5 text-right sm:pr-6">{pct(s.shareCountChange)}</td>
+              <td className="py-3 pl-3 pr-5 text-right sm:pr-6">{pct(s.fcfYield)}</td>
             </tr>
           ))}
         </tbody>

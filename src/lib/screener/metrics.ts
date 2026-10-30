@@ -5,12 +5,6 @@ const finite = (v: unknown): v is number =>
 
 export const numOrNull = (v: unknown): number | null => (finite(v) ? v : null);
 
-/** Annualises a cumulative growth figure (0.76 over 5y -> ~12% a year). */
-export function annualise(cumulative: number | null, years: number): number | null {
-  if (cumulative === null || cumulative <= -1) return null;
-  return (1 + cumulative) ** (1 / years) - 1;
-}
-
 /** Lynch's PEG: P/E divided by growth in percent. Undefined without positive P/E and growth. */
 export function computePeg(pe: number | null, growth: number | null): number | null {
   if (pe === null || growth === null || pe <= 0 || growth <= 0) return null;

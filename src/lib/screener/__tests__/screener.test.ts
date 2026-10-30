@@ -1,33 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { annualise, classifyLynch, computePeg } from "../metrics";
-import { normalizeFundamentals } from "../normalize";
+import { classifyLynch, computePeg } from "../metrics";
+import { hasMetrics, normalizeFundamentals } from "../normalize";
 import { parseCriteria } from "../params";
 import { runScreen, screenStock } from "../screen";
-import type { Fundamentals } from "../types";
+import { hasFundamentals, type Fundamentals } from "../types";
 
-// Real AAPL values from FMP (stable API), trimmed to the fields we read.
-const AAPL_RAW = {
-  profile: { companyName: "Apple Inc.", sector: "Technology", industry: "Consumer Electronics", price: 343.83, marketCap: 5017916909400 },
-  ratios: { priceToEarningsRatioTTM: 39.29, priceToBookRatioTTM: 46.87, debtToEquityRatioTTM: 0.784, interestCoverageRatioTTM: 0, grossProfitMarginTTM: 0.4865, netProfitMarginTTM: 0.2762 },
-  metrics: { returnOnEquityTTM: 1.372, returnOnInvestedCapitalTTM: 0.5187, freeCashFlowYieldTTM: 0.0272 },
-  growth: { revenueGrowth: 0.0643, epsgrowth: 0.2259, fiveYNetIncomeGrowthPerShare: 1.2647, weightedAverageSharesDilutedGrowth: -0.0262 },
+// Real values from Finnhub stock/metric for BALL, trimmed to the fields we read.
+const BALL = { symbol: "BALL", name: "Ball Corp", sector: "Materials" };
+const BALL_METRIC = {
+  peTTM: 17.9143, pbQuarterly: 2.8914, "totalDebt/totalEquityQuarterly": 1.2565,
+  netInterestCoverageTTM: 4.9718, roeTTM: 17.05, roiTTM: 7.36, grossMarginTTM: 18.63,
+  netProfitMarginTTM: 6.61, epsGrowth5Y: 13.47, epsGrowthTTMYoy: 82.34,
+  revenueGrowthTTMYoy: 15.56, pfcfShareTTM: 9.6118,
 };
+const MMM = { symbol: "MMM", name: "3M", sector: "Industrials" };
 
 const stock = (over: Partial<Fundamentals> = {}): Fundamentals => ({
-  symbol: "TEST", name: "Test Co", sector: "Technology", industry: null,
-  price: 100, marketCap: 1e10, pe: 20, peg: 1, priceToBook: 3, debtToEquity: 0.5,
+  symbol: "TEST", name: "Test Co", sector: "Technology", pe: 20, peg: 1, priceToBook: 3, debtToEquity: 0.5,
   interestCoverage: 10, roe: 0.2, roic: 0.18, fcfYield: 0.05, grossMargin: 0.5,
   netMargin: 0.15, revenueGrowth: 0.1, epsGrowth: 0.15, epsCagr5y: 0.2,
-  shareCountChange: -0.01, category: "fast_grower", ...over,
+  revenueCagr3y: 0.12, revenueCagr5y: 0.11, revenueCagr10y: 0.1,
+  category: "fast_grower", ...over,
 });
 
 describe("metrics", () => {
-  it("annualises cumulative growth", () => {
-    expect(annualise(1.0, 5)).toBeCloseTo(0.1487, 4); // doubled in 5y
-    expect(annualise(null, 5)).toBeNull();
-    expect(annualise(-1, 5)).toBeNull();
-  });
-
   it("computes PEG only for positive P/E and growth", () => {
     expect(computePeg(20, 0.2)).toBeCloseTo(1);
     expect(computePeg(-5, 0.2)).toBeNull();
@@ -47,27 +43,39 @@ describe("metrics", () => {
 });
 
 describe("normalizeFundamentals", () => {
-  const f = normalizeFundamentals("AAPL", AAPL_RAW);
+  const f = normalizeFundamentals(BALL, BALL_METRIC);
 
-  it("maps provider fields", () => {
-    expect(f).toMatchObject({ symbol: "AAPL", name: "Apple Inc.", sector: "Technology", pe: 39.29, roic: 0.5187 });
+  it("converts Finnhub percentages to fractions", () => {
+    expect(f).toMatchObject({ symbol: "BALL", name: "Ball Corp", sector: "Materials" });
+    expect(f.roe).toBeCloseTo(0.1705, 4);
+    expect(f.roic).toBeCloseTo(0.0736, 4);
+    expect(f.netMargin).toBeCloseTo(0.0661, 4);
+    expect(f.epsCagr5y).toBeCloseTo(0.1347, 4);
+    expect(f.debtToEquity).toBeCloseTo(1.2565, 4);
   });
 
-  it("derives CAGR, own PEG and category from 5y growth", () => {
-    expect(f.epsCagr5y).toBeCloseTo(0.1776, 3);
-    expect(f.peg).toBeCloseTo(39.29 / 17.76, 1);
-    expect(f.category).toBe("stalwart");
+  it("derives own PEG and FCF yield", () => {
+    expect(f.peg).toBeCloseTo(17.9143 / 13.47, 3);
+    expect(f.fcfYield).toBeCloseTo(1 / 9.6118, 4);
   });
 
-  it("treats reported interest coverage of 0 as unknown", () => {
-    expect(f.interestCoverage).toBeNull();
+  it("labels Energy and Materials cyclical", () => {
+    expect(f.category).toBe("cyclical");
   });
 
-  it("survives locked or missing endpoints", () => {
-    const empty = normalizeFundamentals("ZZZ", { profile: undefined, ratios: undefined, metrics: undefined, growth: undefined });
-    expect(empty.pe).toBeNull();
-    expect(empty.peg).toBeNull();
-    expect(empty.category).toBe("unclassified");
+  it("handles shrinking earnings and loss-making stocks", () => {
+    const mmm = normalizeFundamentals(MMM, { peTTM: 25.78, epsGrowth5Y: -8.5, pfcfShareTTM: 33.5 });
+    expect(mmm.category).toBe("turnaround");
+    expect(mmm.peg).toBeNull();
+    const loss = normalizeFundamentals(MMM, { peTTM: -4, epsGrowth5Y: 10, pfcfShareTTM: -2 });
+    expect(loss.pe).toBeNull();
+    expect(loss.fcfYield).toBeNull();
+  });
+
+  it("treats an empty metric object as no data", () => {
+    expect(hasMetrics({})).toBe(false);
+    expect(hasMetrics(undefined)).toBe(false);
+    expect(hasMetrics(BALL_METRIC)).toBe(true);
   });
 });
 
@@ -83,9 +91,9 @@ describe("screening", () => {
   });
 
   it("applies every active criterion", () => {
-    const c = { maxPeg: 1.5, minRoic: 0.15, noDilution: true };
+    const c = { maxPeg: 1.5, minRoic: 0.15, maxDebtToEquity: 1 };
     expect(screenStock(stock(), c).passed).toBe(true);
-    expect(screenStock(stock({ shareCountChange: 0.05 }), c).passed).toBe(false);
+    expect(screenStock(stock({ debtToEquity: 2 }), c).passed).toBe(false);
   });
 
   it("sorts by PEG with unknown PEG last", () => {
@@ -97,15 +105,41 @@ describe("screening", () => {
   });
 });
 
+describe("revenue growth filters", () => {
+  it("applies 10-year revenue growth and fails when it is unknown", () => {
+    expect(screenStock(stock(), { minRevCagr10y: 0.08 }).passed).toBe(true);
+    expect(screenStock(stock({ revenueCagr10y: 0.05 }), { minRevCagr10y: 0.08 }).passed).toBe(false);
+    expect(screenStock(stock({ revenueCagr10y: null }), { minRevCagr10y: 0.08 }).passed).toBe(false);
+  });
+
+  it("tolerates cached rows saved before revenue growth existed", () => {
+    const old = { ...stock(), revenueCagr10y: undefined } as unknown as Fundamentals;
+    expect(screenStock(old, { minRevCagr10y: 0.08 }).passed).toBe(false);
+  });
+});
+
 describe("parseCriteria", () => {
   it("scales percent fields and drops empties", () => {
-    expect(parseCriteria({ maxPe: "20", minRoic: "15", minRoe: "", noDilution: "on" })).toEqual({
-      maxPe: 20, minRoic: 0.15, noDilution: true,
+    expect(parseCriteria({ maxPe: "20", minRoic: "15", minRoe: "" })).toEqual({
+      maxPe: 20, minRoic: 0.15,
     });
   });
 
   it("uses a preset when named and ignores junk", () => {
     expect(parseCriteria({ preset: "lynch" }).maxPeg).toBe(1.5);
     expect(parseCriteria({ maxPe: "abc", category: "nope" })).toEqual({});
+  });
+});
+
+describe("hasFundamentals", () => {
+  const profileOnly = { ...stock(), pe: null, roic: null, roe: null, debtToEquity: null, epsGrowth: null, revenueGrowth: null };
+
+  it("rejects restricted markers and old profile-only rows", () => {
+    expect(hasFundamentals({ symbol: "BALL", restricted: true })).toBe(false);
+    expect(hasFundamentals(profileOnly)).toBe(false);
+  });
+
+  it("accepts rows with real numbers", () => {
+    expect(hasFundamentals(stock())).toBe(true);
   });
 });

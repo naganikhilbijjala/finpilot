@@ -19,8 +19,9 @@ export function SyncButton({ remaining }: { remaining: number }) {
         setMessage(body.message ?? "Sync failed");
       } else {
         const parts = [`Synced ${body.synced}`];
+        if (body.restricted) parts.push(`${body.restricted} without data`);
         if (body.failed.length) parts.push(`${body.failed.length} failed`);
-        if (body.hitLimit) parts.push("daily limit reached, try tomorrow");
+        if (body.hitLimit) parts.push("rate limit reached, wait a minute and click again");
         setMessage(parts.join(" · "));
         router.refresh();
       }
@@ -35,7 +36,7 @@ export function SyncButton({ remaining }: { remaining: number }) {
     <div className="flex items-center gap-3">
       {message && <span className="text-xs text-gray-500">{message}</span>}
       <Button variant="outline" size="sm" loading={loading} onClick={sync}>
-        {remaining > 0 ? `Load next 50 (${remaining} left)` : "Refresh oldest 50"}
+        {remaining > 0 ? `Load next batch (${remaining} left)` : "Refresh oldest batch"}
       </Button>
     </div>
   );

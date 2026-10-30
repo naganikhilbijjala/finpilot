@@ -29,9 +29,10 @@ export function parseCriteria(params: Params): ScreenCriteria {
     minRoic: num(params.minRoic, 100),
     minRoe: num(params.minRoe, 100),
     minEpsCagr: num(params.minEpsCagr, 100),
+    minRevCagr5y: num(params.minRev5, 100),
+    minRevCagr10y: num(params.minRev10, 100),
     minFcfYield: num(params.minFcf, 100),
     minNetMargin: num(params.minMargin, 100),
-    noDilution: first(params.noDilution) === "on" ? true : undefined,
     category: category && CATEGORIES.includes(category) ? category : undefined,
     sector: first(params.sector)?.trim() || undefined,
   };

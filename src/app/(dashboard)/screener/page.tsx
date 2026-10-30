@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { parseCriteria } from "@/lib/screener/params";
 import { PRESETS, runScreen } from "@/lib/screener/screen";
 import { SP500 } from "@/lib/screener/sp500";
-import type { Fundamentals } from "@/lib/screener/types";
+import { hasFundamentals, type StoredData } from "@/lib/screener/types";
 import { checkOwner } from "@/lib/snaptrade/owner";
 import { createClient } from "@/lib/supabase/server";
 
@@ -36,7 +36,9 @@ export default async function ScreenerPage({
     .from("stock_fundamentals")
     .select("data, fetched_at");
 
-  const stocks = (data ?? []).map((r) => r.data as Fundamentals);
+  const rows = (data ?? []).map((r) => r.data as StoredData);
+  const stocks = rows.filter(hasFundamentals);
+  const locked = rows.length - stocks.length;
   const loadedAt = (data ?? []).map((r) => r.fetched_at as string).sort().at(-1);
   const criteria = parseCriteria(params);
   const results = runScreen(stocks, criteria);
@@ -51,7 +53,7 @@ export default async function ScreenerPage({
       <PageHeader
         title="Stock screener"
         description="Filter S&P 500 stocks on the fundamentals Lynch, Buffett and Greenblatt look at. A shortlist to research, not a buy list."
-        actions={owner.ok ? <SyncButton remaining={Math.max(0, SP500.length - stocks.length)} /> : undefined}
+        actions={owner.ok ? <SyncButton remaining={Math.max(0, SP500.length - rows.length)} /> : undefined}
       />
 
       {error && (
@@ -63,9 +65,10 @@ export default async function ScreenerPage({
 
       {!error && stocks.length < SP500.length && (
         <Notice tone="warning">
-          {stocks.length} of {SP500.length} stocks loaded
-          {loadedAt && ` (latest ${new Date(loadedAt).toLocaleDateString()})`}. Results
-          only cover loaded stocks; the free data plan fills about 50 a day.
+          {stocks.length} of {SP500.length} stocks have fundamentals
+          {loadedAt && ` (latest ${new Date(loadedAt).toLocaleDateString()})`}.
+          {locked > 0 &&
+            ` ${locked} are without data from the provider and are left out of results.`}
         </Notice>
       )}
 
@@ -91,6 +94,8 @@ export default async function ScreenerPage({
             ["minRoic", "Min ROIC %", pctVal(criteria.minRoic)],
             ["minRoe", "Min ROE %", pctVal(criteria.minRoe)],
             ["minEpsCagr", "Min EPS growth %/yr", pctVal(criteria.minEpsCagr)],
+            ["minRev5", "Min revenue growth 5y %", pctVal(criteria.minRevCagr5y)],
+            ["minRev10", "Min revenue growth 10y %", pctVal(criteria.minRevCagr10y)],
             ["minFcf", "Min FCF yield %", pctVal(criteria.minFcfYield)],
             ["minMargin", "Min net margin %", pctVal(criteria.minNetMargin)],
           ].map(([name, label, value]) => (
@@ -114,11 +119,7 @@ export default async function ScreenerPage({
               ))}
             </select>
           </label>
-          <label className="flex items-end gap-2 pb-2 text-sm text-gray-700">
-            <input type="checkbox" name="noDilution" defaultChecked={criteria.noDilution} />
-            No dilution
-          </label>
-          <div className="col-span-2 flex items-end gap-2 sm:col-span-2">
+          <div className="col-span-2 flex items-end gap-2">
             <Button type="submit" size="sm">Screen</Button>
             <Link href="/screener" className="px-2 py-1.5 text-sm text-gray-500 hover:underline">
               Reset

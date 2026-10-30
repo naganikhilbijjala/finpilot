@@ -1,52 +1,48 @@
-import { annualise, classifyLynch, computePeg, numOrNull } from "./metrics";
+import { classifyLynch, computePeg, numOrNull } from "./metrics";
+import { NO_REVENUE_GROWTH } from "./revenue";
 import type { Fundamentals } from "./types";
 
-type Row = Record<string, unknown> | undefined;
+/** Finnhub's `metric` object from stock/metric?metric=all. */
+export type FinnhubMetric = Record<string, unknown>;
 
-export interface RawFundamentals {
-  profile: Row;
-  ratios: Row; // ratios-ttm
-  metrics: Row; // key-metrics-ttm
-  growth: Row; // financial-growth (latest annual)
-}
+// Finnhub reports percentages as whole numbers (17.05 = 17.05%); we store fractions.
+const pct = (v: unknown): number | null => {
+  const n = numOrNull(v);
+  return n === null ? null : n / 100;
+};
 
-const str = (v: unknown): string | null =>
-  typeof v === "string" && v.trim() ? v.trim() : null;
+/** Finnhub returns an empty object for symbols it has no data on. */
+export const hasMetrics = (metric: FinnhubMetric | undefined): metric is FinnhubMetric =>
+  Boolean(metric && Object.keys(metric).length > 0);
 
-/** Flattens the four FMP responses into one Fundamentals row. */
 export function normalizeFundamentals(
-  symbol: string,
-  raw: RawFundamentals
+  constituent: { symbol: string; name: string; sector: string },
+  metric: FinnhubMetric
 ): Fundamentals {
-  const { profile, ratios, metrics, growth } = raw;
-
-  const pe = numOrNull(ratios?.priceToEarningsRatioTTM);
-  // The provider reports 0 when there's no interest expense; that's "no debt cost", not "can't pay".
-  const coverage = numOrNull(ratios?.interestCoverageRatioTTM);
-  const epsCagr5y = annualise(numOrNull(growth?.fiveYNetIncomeGrowthPerShare), 5);
-  const sector = str(profile?.sector);
+  const pe = numOrNull(metric.peTTM);
+  const epsCagr5y = pct(metric.epsGrowth5Y);
+  const pfcf = numOrNull(metric.pfcfShareTTM);
 
   return {
-    symbol,
-    name: str(profile?.companyName),
-    sector,
-    industry: str(profile?.industry),
-    price: numOrNull(profile?.price),
-    marketCap: numOrNull(profile?.marketCap),
-    pe,
+    symbol: constituent.symbol,
+    name: constituent.name,
+    sector: constituent.sector,
+    // A negative P/E means losses; treat it as no P/E.
+    pe: pe !== null && pe > 0 ? pe : null,
     peg: computePeg(pe, epsCagr5y),
-    priceToBook: numOrNull(ratios?.priceToBookRatioTTM),
-    debtToEquity: numOrNull(ratios?.debtToEquityRatioTTM),
-    interestCoverage: coverage === 0 ? null : coverage,
-    roe: numOrNull(metrics?.returnOnEquityTTM),
-    roic: numOrNull(metrics?.returnOnInvestedCapitalTTM),
-    fcfYield: numOrNull(metrics?.freeCashFlowYieldTTM),
-    grossMargin: numOrNull(ratios?.grossProfitMarginTTM),
-    netMargin: numOrNull(ratios?.netProfitMarginTTM),
-    revenueGrowth: numOrNull(growth?.revenueGrowth),
-    epsGrowth: numOrNull(growth?.epsgrowth),
+    priceToBook: numOrNull(metric.pbQuarterly),
+    debtToEquity: numOrNull(metric["totalDebt/totalEquityQuarterly"]),
+    interestCoverage: numOrNull(metric.netInterestCoverageTTM),
+    roe: pct(metric.roeTTM),
+    // Finnhub's "return on investment", the closest it offers to ROIC.
+    roic: pct(metric.roiTTM),
+    fcfYield: pfcf !== null && pfcf > 0 ? 1 / pfcf : null,
+    grossMargin: pct(metric.grossMarginTTM),
+    netMargin: pct(metric.netProfitMarginTTM),
+    revenueGrowth: pct(metric.revenueGrowthTTMYoy),
+    epsGrowth: pct(metric.epsGrowthTTMYoy),
     epsCagr5y,
-    shareCountChange: numOrNull(growth?.weightedAverageSharesDilutedGrowth),
-    category: classifyLynch({ sector, pe, epsCagr5y }),
+    ...NO_REVENUE_GROWTH,
+    category: classifyLynch({ sector: constituent.sector, pe, epsCagr5y }),
   };
 }
