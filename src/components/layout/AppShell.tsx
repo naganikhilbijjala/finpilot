@@ -3,6 +3,7 @@ import {
   BankIcon,
   ChartIcon,
   HomeIcon,
+  LayersIcon,
   LogoutIcon,
   PercentIcon,
   PlusIcon,
@@ -24,6 +25,7 @@ function buildSections(isOwner: boolean): NavSection[] {
       title: "Brokerage",
       items: [
         { href: "/overview", label: "Overview", icon: <WalletIcon /> },
+        { href: "/exposure", label: "Stock exposure", icon: <LayersIcon /> },
         { href: "/performance", label: "Performance", icon: <ChartIcon /> },
         { href: "/returns", label: "Returns", icon: <PercentIcon /> },
         { href: "/accounts", label: "Accounts", icon: <BankIcon /> },

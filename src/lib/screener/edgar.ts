@@ -6,7 +6,7 @@ import { extractStatements, type Statements } from "./statements";
 // The SEC asks automated clients to identify themselves with a contact. Set
 // SEC_USER_AGENT (e.g. "finpilot you@example.com") in the environment; the
 // plain name below is accepted by data.sec.gov but not by www.sec.gov.
-const userAgent = () =>
+export const userAgent = () =>
   process.env.SEC_USER_AGENT?.trim() || "finpilot-personal-research (non-commercial)";
 
 // Companies that re-registered under a new CIK (the new one has no history).
