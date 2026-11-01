@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { BrokerageOverview } from "@/components/dashboard/BrokerageOverview";
+import { GroupCards } from "@/components/dashboard/GroupCards";
 import { ManualPortfolio } from "@/components/dashboard/ManualPortfolio";
 import { PerformancePreview } from "@/components/dashboard/PerformancePreview";
 import { Button } from "@/components/ui/Button";
@@ -47,6 +48,18 @@ export default async function DashboardPage() {
 
       {isOwner && (
         <>
+          <Suspense
+            fallback={
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <CardSkeleton height="h-16" />
+                <CardSkeleton height="h-16" />
+                <CardSkeleton height="h-16" />
+              </div>
+            }
+          >
+            <GroupCards />
+          </Suspense>
+
           <Suspense
             fallback={
               <div className="space-y-6">

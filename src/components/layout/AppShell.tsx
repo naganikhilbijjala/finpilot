@@ -9,6 +9,7 @@ import {
   PlusIcon,
   SparkIcon,
   UploadIcon,
+  UsersIcon,
   WalletIcon,
 } from "@/components/ui/Icons";
 import { StockSearch } from "@/components/screener/StockSearch";
@@ -29,6 +30,7 @@ function buildSections(isOwner: boolean): NavSection[] {
         { href: "/performance", label: "Performance", icon: <ChartIcon /> },
         { href: "/returns", label: "Returns", icon: <PercentIcon /> },
         { href: "/accounts", label: "Accounts", icon: <BankIcon /> },
+        { href: "/settings/accounts", label: "Account groups", icon: <UsersIcon /> },
       ],
     });
   }

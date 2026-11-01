@@ -7,9 +7,11 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { buildOverview } from "@/lib/snaptrade/aggregate";
 import { isSnaptradeConfigured } from "@/lib/snaptrade/client";
 import { describeError } from "@/lib/snaptrade/errors";
+import { filterSnapshot } from "@/lib/groups/groups";
+import { resolvePageView } from "@/lib/groups/views";
 import { fetchSnapshot } from "@/lib/snaptrade/snapshot";
 
-/** Net worth, allocation and movers: the at-a-glance half of the Overview page. */
+/** Net worth, allocation and movers for your own money (managed accounts excluded). */
 export async function BrokerageOverview() {
   if (!isSnaptradeConfigured()) {
     return (
@@ -22,7 +24,8 @@ export async function BrokerageOverview() {
 
   let overview;
   try {
-    overview = buildOverview(await fetchSnapshot());
+    const { include } = await resolvePageView("mine", "mine");
+    overview = buildOverview(filterSnapshot(await fetchSnapshot(), include));
   } catch (err) {
     console.error("SnapTrade snapshot failed:", describeError(err));
     return (
@@ -35,7 +38,7 @@ export async function BrokerageOverview() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionHeading title="Brokerage overview" href="/overview" linkLabel="Full overview" />
+        <SectionHeading title="Your money" href="/overview" linkLabel="Full overview" />
         <StatCards o={overview} />
       </div>
 

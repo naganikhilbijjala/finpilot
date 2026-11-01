@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AccountCard } from "@/components/accounts/AccountCard";
 import { Card } from "@/components/ui/Card";
@@ -6,7 +7,10 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { isSnaptradeConfigured } from "@/lib/snaptrade/client";
 import { checkOwner } from "@/lib/snaptrade/owner";
 import { describeError } from "@/lib/snaptrade/errors";
+import { assignmentOf, GROUP_LABEL, managedKey } from "@/lib/groups/groups";
+import { getGroupSettings } from "@/lib/groups/settings";
 import { fetchSnapshot } from "@/lib/snaptrade/snapshot";
+import { formatMoney } from "@/lib/utils/format";
 import type { SnapshotResult } from "@/lib/snaptrade/types";
 
 // Brokerage data must be fresh per request, never statically rendered.
@@ -33,6 +37,20 @@ export default async function AccountsPage() {
     }
   }
 
+  // Sections in a fixed order: yours first, then each person you manage for.
+  const { assignments } = await getGroupSettings();
+  const sections = new Map<string, { title: string; items: NonNullable<typeof snapshot>["accounts"] }>();
+  for (const s of snapshot?.accounts ?? []) {
+    const a = assignmentOf(s.account.id, assignments);
+    const key = a.kind === "managed" && a.managedFor ? managedKey(a.managedFor) : a.kind;
+    const title = a.kind === "managed" && a.managedFor ? `Managed for ${a.managedFor}` : GROUP_LABEL[a.kind];
+    const section = sections.get(key) ?? { title, items: [] };
+    section.items.push(s);
+    sections.set(key, section);
+  }
+  const order = (k: string) => (k === "investments" ? 0 : k === "emergency" ? 1 : 2);
+  const grouped = [...sections.entries()].sort((a, b) => order(a[0]) - order(b[0]));
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -41,6 +59,14 @@ export default async function AccountsPage() {
           snapshot
             ? `Retrieved ${new Date(snapshot.fetchedAt).toLocaleString()}. Prices may be delayed depending on the brokerage.`
             : "Positions in each connected account."
+        }
+        actions={
+          <Link
+            href="/settings/accounts"
+            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
+          >
+            Edit groups
+          </Link>
         }
       />
 
@@ -61,7 +87,24 @@ export default async function AccountsPage() {
               </p>
             </Card>
           ) : (
-            snapshot.accounts.map((s) => <AccountCard key={s.account.id} snapshot={s} />)
+            grouped.map(([key, { title, items }]) => (
+              <section key={key} className="space-y-4">
+                {grouped.length > 1 && (
+                  <div className="flex items-baseline justify-between border-b border-gray-200 pb-2">
+                    <h2 className="text-lg font-semibold tracking-tight text-gray-900">{title}</h2>
+                    <span className="num text-sm text-gray-500">
+                      {formatMoney(
+                        items.reduce((sum, s) => sum + (s.account.totalValue ?? 0), 0),
+                        items[0]?.account.currency
+                      )}
+                    </span>
+                  </div>
+                )}
+                {items.map((s) => (
+                  <AccountCard key={s.account.id} snapshot={s} />
+                ))}
+              </section>
+            ))
           )}
         </>
       )}

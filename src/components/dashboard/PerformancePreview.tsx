@@ -3,12 +3,14 @@ import { Notice } from "@/components/ui/Notice";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { loadPerformance } from "@/lib/returns/loadPerformance";
 import { describeError } from "@/lib/snaptrade/errors";
+import { resolvePageView } from "@/lib/groups/views";
 
 /** The interactive chart from the Performance page, without the detail table. */
 export async function PerformancePreview() {
   let data;
   try {
-    data = await loadPerformance();
+    const { include, view } = await resolvePageView("investments", "investments");
+    data = await loadPerformance(include, view.label);
   } catch (err) {
     console.error("Performance load failed:", describeError(err));
     return (

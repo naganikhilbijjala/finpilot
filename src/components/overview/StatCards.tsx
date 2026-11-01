@@ -3,13 +3,13 @@ import { ChartIcon, LayersIcon, WalletIcon, SparkIcon } from "@/components/ui/Ic
 import { formatMoney, formatPercent } from "@/lib/utils/format";
 import type { Overview } from "@/lib/snaptrade/aggregate";
 
-export function StatCards({ o }: { o: Overview }) {
+export function StatCards({ o, valueLabel = "Net worth" }: { o: Overview; valueLabel?: string }) {
   const gainTone = o.unrealizedPnl >= 0 ? "positive" : "negative";
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard
         accent
-        label="Net worth"
+        label={valueLabel}
         icon={<WalletIcon className="h-4 w-4" />}
         value={formatMoney(o.netWorth, o.currency)}
         sub={`${o.accounts.length} account${o.accounts.length === 1 ? "" : "s"}`}

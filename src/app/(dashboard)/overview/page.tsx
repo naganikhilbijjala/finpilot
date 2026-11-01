@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { ViewSwitcher } from "@/components/groups/ViewSwitcher";
+import { resolvePageView, type ResolvedView } from "@/lib/groups/views";
 import { AccountDonut } from "@/components/overview/AccountDonut";
 import { AccountHealth } from "@/components/overview/AccountHealth";
 import { CashBreakdown } from "@/components/overview/CashBreakdown";
@@ -12,16 +14,18 @@ import { buildOverview, type Overview } from "@/lib/snaptrade/aggregate";
 import { isSnaptradeConfigured } from "@/lib/snaptrade/client";
 import { describeError } from "@/lib/snaptrade/errors";
 import { checkOwner } from "@/lib/snaptrade/owner";
+import { filterSnapshot } from "@/lib/groups/groups";
 import { fetchSnapshot } from "@/lib/snaptrade/snapshot";
 
 // Brokerage data must be fresh per request, never statically rendered.
 export const dynamic = "force-dynamic";
 
-export default async function OverviewPage() {
+export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ view?: string | string[] }> }) {
   const owner = await checkOwner();
   if (!owner.ok && owner.status === 401) redirect("/login");
 
   let overview: Overview | null = null;
+  let scope: ResolvedView | null = null;
   let error: string | null = null;
 
   if (!owner.ok) {
@@ -31,7 +35,8 @@ export default async function OverviewPage() {
       "SnapTrade isn't configured. Set SNAPTRADE_CLIENT_ID and SNAPTRADE_CONSUMER_KEY in .env.local and restart the server.";
   } else {
     try {
-      overview = buildOverview(await fetchSnapshot());
+      scope = await resolvePageView((await searchParams).view, "mine");
+      overview = buildOverview(filterSnapshot(await fetchSnapshot(), scope.include));
     } catch (err) {
       console.error("SnapTrade snapshot failed:", describeError(err));
       error = `Could not fetch accounts from SnapTrade. ${describeError(err)}.`;
@@ -42,6 +47,7 @@ export default async function OverviewPage() {
     <div className="space-y-6">
       <PageHeader
         title="Overview"
+        actions={scope && <ViewSwitcher views={scope.views} active={scope.view.key} />}
         description={
           overview
             ? `Retrieved ${new Date(overview.fetchedAt).toLocaleString()}. Prices may be delayed depending on the brokerage.`
@@ -74,7 +80,16 @@ export default async function OverviewPage() {
             </Notice>
           )}
 
-          <StatCards o={overview} />
+          <StatCards
+            o={overview}
+            valueLabel={
+              // "My investments" is your whole net worth only when there's no emergency fund group.
+              scope?.view.kind === "mine" ||
+              (scope?.view.kind === "investments" && !scope.views.some((v) => v.kind === "mine"))
+                ? "Net worth"
+                : "Total value"
+            }
+          />
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card title="Net worth by account" subtitle="Hover a slice to see its share">

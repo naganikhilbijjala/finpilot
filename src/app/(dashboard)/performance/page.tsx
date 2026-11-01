@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { ViewSwitcher } from "@/components/groups/ViewSwitcher";
+import { resolvePageView, type ResolvedView } from "@/lib/groups/views";
 import { Notice } from "@/components/ui/Notice";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PerformanceExplorer } from "@/components/performance/PerformanceExplorer";
@@ -10,11 +12,12 @@ import { checkOwner } from "@/lib/snaptrade/owner";
 // Brokerage data must be fresh per request, never statically rendered.
 export const dynamic = "force-dynamic";
 
-export default async function PerformancePage() {
+export default async function PerformancePage({ searchParams }: { searchParams: Promise<{ view?: string | string[] }> }) {
   const owner = await checkOwner();
   if (!owner.ok && owner.status === 401) redirect("/login");
 
   let data: PerformanceData | null = null;
+  let scope: ResolvedView | null = null;
   let error: string | null = null;
 
   if (!owner.ok) {
@@ -24,7 +27,8 @@ export default async function PerformancePage() {
       "SnapTrade isn't configured. Set SNAPTRADE_CLIENT_ID and SNAPTRADE_CONSUMER_KEY in .env.local and restart the server.";
   } else {
     try {
-      data = await loadPerformance();
+      scope = await resolvePageView((await searchParams).view, "investments");
+      data = await loadPerformance(scope.include, scope.view.label);
     } catch (err) {
       console.error("Performance load failed:", describeError(err));
       error = `Could not build performance. ${
@@ -39,6 +43,7 @@ export default async function PerformancePage() {
     <div className="space-y-6">
       <PageHeader
         title="Performance"
+        actions={scope && <ViewSwitcher views={scope.views} active={scope.view.key} />}
         description={
           <>
             Returns are <span className="font-medium text-gray-700">time-weighted</span>, so when you

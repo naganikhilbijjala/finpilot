@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { ViewSwitcher } from "@/components/groups/ViewSwitcher";
+import { resolvePageView, type ResolvedView } from "@/lib/groups/views";
 import { AccountReturns } from "@/components/returns/AccountReturns";
 import { TickerReturns } from "@/components/returns/TickerReturns";
 import { Card } from "@/components/ui/Card";
@@ -15,11 +17,12 @@ import { checkOwner } from "@/lib/snaptrade/owner";
 // Brokerage data must be fresh per request, never statically rendered.
 export const dynamic = "force-dynamic";
 
-export default async function ReturnsPage() {
+export default async function ReturnsPage({ searchParams }: { searchParams: Promise<{ view?: string | string[] }> }) {
   const owner = await checkOwner();
   if (!owner.ok && owner.status === 401) redirect("/login");
 
   let loaded: LoadedReturns | null = null;
+  let scope: ResolvedView | null = null;
   let error: string | null = null;
 
   if (!owner.ok) {
@@ -29,7 +32,8 @@ export default async function ReturnsPage() {
       "SnapTrade isn't configured. Set SNAPTRADE_CLIENT_ID and SNAPTRADE_CONSUMER_KEY in .env.local and restart the server.";
   } else {
     try {
-      loaded = await loadReturns();
+      scope = await resolvePageView((await searchParams).view, "investments");
+      loaded = await loadReturns(scope.include, scope.view.label);
     } catch (err) {
       console.error("Returns load failed:", describeError(err));
       error = `Could not load returns from SnapTrade. ${describeError(err)}.`;
@@ -46,6 +50,7 @@ export default async function ReturnsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Returns"
+        actions={scope && <ViewSwitcher views={scope.views} active={scope.view.key} />}
         description={
           <>
             <span className="font-medium text-gray-700">Annualized</span> is XIRR, a money-weighted

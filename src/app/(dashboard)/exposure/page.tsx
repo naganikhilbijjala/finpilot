@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { ViewSwitcher } from "@/components/groups/ViewSwitcher";
+import { resolvePageView, type ResolvedView } from "@/lib/groups/views";
 import { ExposureView } from "@/components/exposure/ExposureView";
 import { Notice } from "@/components/ui/Notice";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -10,11 +12,12 @@ import { checkOwner } from "@/lib/snaptrade/owner";
 // Brokerage data must be fresh per request, never statically rendered.
 export const dynamic = "force-dynamic";
 
-export default async function ExposurePage() {
+export default async function ExposurePage({ searchParams }: { searchParams: Promise<{ view?: string | string[] }> }) {
   const owner = await checkOwner();
   if (!owner.ok && owner.status === 401) redirect("/login");
 
   let data: LoadedExposure | null = null;
+  let scope: ResolvedView | null = null;
   let error: string | null = null;
 
   if (!owner.ok) {
@@ -24,7 +27,8 @@ export default async function ExposurePage() {
       "SnapTrade isn't configured. Set SNAPTRADE_CLIENT_ID and SNAPTRADE_CONSUMER_KEY in .env.local and restart the server.";
   } else {
     try {
-      data = await loadExposure();
+      scope = await resolvePageView((await searchParams).view, "investments");
+      data = await loadExposure(scope.include);
     } catch (err) {
       console.error("Exposure load failed:", err);
       error =
@@ -38,6 +42,7 @@ export default async function ExposurePage() {
     <div className="space-y-6">
       <PageHeader
         title="Stock exposure"
+        actions={scope && <ViewSwitcher views={scope.views} active={scope.view.key} />}
         description="Your real ownership of each company once ETFs and mutual funds are split into what they hold, so NVDA bought directly and NVDA inside VOO or QQQ count together."
       />
 

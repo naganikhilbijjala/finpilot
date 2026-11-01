@@ -1,4 +1,5 @@
 import "server-only";
+import { filterSnapshot } from "@/lib/groups/groups";
 import { userAgent } from "@/lib/screener/edgar";
 import { buildOverview } from "@/lib/snaptrade/aggregate";
 import { fetchSnapshot } from "@/lib/snaptrade/snapshot";
@@ -106,14 +107,15 @@ export interface LoadedExposure {
   fundErrors: { ticker: string; message: string }[];
 }
 
-export async function loadExposure(): Promise<LoadedExposure> {
+export async function loadExposure(include?: (accountId: string) => boolean): Promise<LoadedExposure> {
   if (!process.env.SEC_USER_AGENT?.trim()) {
     throw new MissingSecAgentError(
       'Set SEC_USER_AGENT (for example "finpilot you@example.com") so fund holdings can be read from SEC EDGAR'
     );
   }
 
-  const snapshot = await fetchSnapshot();
+  const all = await fetchSnapshot();
+  const snapshot = include ? filterSnapshot(all, include) : all;
   const overview = buildOverview(snapshot);
   const [index, series] = await Promise.all([loadCompanyIndex(), loadSeriesMap()]);
 

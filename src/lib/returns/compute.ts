@@ -233,7 +233,8 @@ function tickerReturnsFor(a: AccountInput, asOf: Date) {
 
 export function computeReturns(
   accounts: AccountInput[],
-  asOf: Date = new Date()
+  asOf: Date = new Date(),
+  portfolioName = "All accounts"
 ): ReturnsResult {
   const accountReturns = accounts.map((a) => accountReturn(a, asOf));
 
@@ -243,7 +244,7 @@ export function computeReturns(
   const withdrawn = accountReturns.reduce((s, r) => s + r.withdrawn, 0);
   const portfolio: AccountReturn = {
     id: "all",
-    name: "All accounts",
+    name: portfolioName,
     value: portfolioValue,
     contributed,
     withdrawn,

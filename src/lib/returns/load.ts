@@ -1,6 +1,7 @@
 import "server-only";
 import { describeError } from "@/lib/snaptrade/errors";
 import { fetchActivities } from "@/lib/snaptrade/activities";
+import { filterSnapshot } from "@/lib/groups/groups";
 import { fetchSnapshot } from "@/lib/snaptrade/snapshot";
 import type { SnapshotFailure } from "@/lib/snaptrade/types";
 import { computeReturns, type AccountInput, type ReturnsResult } from "./compute";
@@ -11,12 +12,13 @@ export interface LoadedReturns {
   failures: SnapshotFailure[];
 }
 
-/** Read-only: positions + full activity history per account. */
-export async function loadInputs(): Promise<{
+/** Read-only: positions + full activity history per account (optionally only some accounts). */
+export async function loadInputs(include?: (accountId: string) => boolean): Promise<{
   inputs: AccountInput[];
   failures: SnapshotFailure[];
 }> {
-  const snapshot = await fetchSnapshot();
+  const all = await fetchSnapshot();
+  const snapshot = include ? filterSnapshot(all, include) : all;
   const failures: SnapshotFailure[] = [...snapshot.failures];
 
   const histories = await Promise.allSettled(
@@ -45,7 +47,10 @@ export async function loadInputs(): Promise<{
   return { inputs, failures };
 }
 
-export async function loadReturns(): Promise<LoadedReturns> {
-  const { inputs, failures } = await loadInputs();
-  return { result: computeReturns(inputs), failures };
+export async function loadReturns(
+  include?: (accountId: string) => boolean,
+  totalName?: string
+): Promise<LoadedReturns> {
+  const { inputs, failures } = await loadInputs(include);
+  return { result: computeReturns(inputs, new Date(), totalName), failures };
 }

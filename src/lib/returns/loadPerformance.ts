@@ -50,8 +50,11 @@ const toPerf = (s: AccountSeries): PerfAccount => ({
  * Rebuilds each account's daily value from its transactions and market prices,
  * and aligns benchmark total-return indexes to the same calendar.
  */
-export async function loadPerformance(): Promise<PerformanceData> {
-  const { inputs, failures } = await loadInputs();
+export async function loadPerformance(
+  include?: (accountId: string) => boolean,
+  totalName = "All accounts"
+): Promise<PerformanceData> {
+  const { inputs, failures } = await loadInputs(include);
 
   const from = inputs
     .flatMap((i) => i.activities.map((a) => a.date.slice(0, 10)))
@@ -97,7 +100,7 @@ export async function loadPerformance(): Promise<PerformanceData> {
     ];
   });
 
-  const all = combineSeries("all", "All accounts", series);
+  const all = combineSeries("all", totalName, series);
   return {
     dates,
     accounts: [all, ...series].map(toPerf),
