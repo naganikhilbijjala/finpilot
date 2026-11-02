@@ -15,8 +15,12 @@ const DAY = 24 * HOUR;
 /** Five years of copied returns need the filing published just before the window opens. */
 const HISTORY_YEARS = 5;
 const EXTRA_DAYS = 120;
-/** Positions kept per filing; the long tail barely moves a copied portfolio. */
-const MAX_POSITIONS = 150;
+/**
+ * Positions kept per filing. All of them, in practice (Jane Street files ~5,500),
+ * so "new" and "sold" are exact; the cap only keeps a pathological filing under
+ * the data cache's 2 MB per-entry limit.
+ */
+const MAX_POSITIONS = 15_000;
 const BENCHMARK = "SPY";
 
 interface FilingRef {
@@ -63,10 +67,16 @@ async function listFilings(cik: number): Promise<{ filer: string; filings: Filin
 }
 
 type CompactPosition = [cusip: string, name: string, value: number, shares: number];
+interface CompactTable {
+  positions: CompactPosition[];
+  /** Every long stock position, including those beyond the ones kept. */
+  count: number;
+  total: number;
+}
 
 // A filed 13F never changes, so its table can be cached for a long time.
 const fetchTable = unstable_cache(
-  async (cik: number, accession: string): Promise<CompactPosition[]> => {
+  async (cik: number, accession: string): Promise<CompactTable> => {
     const folder = `https://www.sec.gov/Archives/edgar/data/${cik}/${accession.replace(/-/g, "")}`;
     const index = (await (await secFetch(`${folder}/index.json`)).json()) as {
       directory?: { item?: { name: string }[] };
@@ -74,9 +84,13 @@ const fetchTable = unstable_cache(
     const file = infoTableFile((index.directory?.item ?? []).map((i) => i.name));
     if (!file) throw new Error(`No information table in 13F ${accession}`);
     const positions = toPositions(parseInfoTable(await (await secFetch(`${folder}/${file}`)).text()));
-    return positions.slice(0, MAX_POSITIONS).map((p) => [p.cusip, p.name, p.value, p.shares]);
+    return {
+      positions: positions.slice(0, MAX_POSITIONS).map((p) => [p.cusip, p.name, p.value, p.shares]),
+      count: positions.length,
+      total: positions.reduce((s, p) => s + p.value, 0),
+    };
   },
-  ["sec-13f-table-v1"],
+  ["sec-13f-table-v3"],
   { revalidate: 30 * DAY }
 );
 
@@ -92,6 +106,28 @@ const fetchCusipPairs = unstable_cache(
   ["sec-cusip-map-v1"],
   { revalidate: 7 * DAY }
 );
+
+// Shares downloads in flight: a retry after the time budget ran out joins the
+// fetches the previous attempt left running instead of starting them again.
+const tableMemo = memo<CompactTable>(DAY * 1000);
+const loadTable = (cik: number, accession: string) => tableMemo.get(accession, () => fetchTable(cik, accession));
+
+/** The report is still being built (big filers take several requests); ask again shortly. */
+export class StillBuildingError extends Error {}
+
+// Vercel stops a request at 60 s. Stop waiting well before, and let the caller
+// retry: finished filings and prices are cached, so each attempt gets further.
+const BUILD_BUDGET_MS = 40_000;
+
+function withinBudget<T>(work: Promise<T>, deadline: number): Promise<T> {
+  const left = deadline - Date.now();
+  if (left <= 0) return Promise.reject(new StillBuildingError("Still reading filings"));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new StillBuildingError("Still reading filings")), left);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
 
 const cusipMemo = memo<CusipMap>(DAY * 1000);
 async function loadCusipMap(): Promise<CusipMap> {
@@ -115,15 +151,18 @@ function readable(title: string): string {
 }
 
 async function buildManagerReport(cik: number): Promise<ManagerReport> {
+  const deadline = Date.now() + BUILD_BUDGET_MS;
   const { filer, filings } = await listFilings(cik);
   if (filings.length === 0) throw new Error("No 13F filings in the last five years");
   const [index, cusips] = await Promise.all([loadCompanyIndex(), loadCusipMap()]);
 
-  const tables = await Promise.all(filings.map((f) => fetchTable(cik, f.accession)));
+  const tables = await withinBudget(Promise.all(filings.map((f) => loadTable(cik, f.accession))), deadline);
   const quarters: Quarter[] = filings.map((f, i) => ({
     filedAt: f.filedAt,
     reportDate: f.reportDate,
-    positions: tables[i].map(([cusip, name, value, shares]): Quarter["positions"][number] => {
+    totalValue: tables[i].total,
+    positionCount: tables[i].count,
+    positions: tables[i].positions.map(([cusip, name, value, shares]): Quarter["positions"][number] => {
       const position: Position = { cusip, name, value, shares };
       const company = resolveSecurity(cusips, index, cusip, name);
       return { ...position, ticker: company?.ticker ?? null, displayName: company ? readable(company.title) : readable(name) };
@@ -134,7 +173,7 @@ async function buildManagerReport(cik: number): Promise<ManagerReport> {
   for (const q of quarters) for (const p of positionsToPrice(q)) tickers.add(p.ticker as string);
   // One shared start date (first of the month) so managers reuse each other's cached prices.
   const from = `${daysBefore(yearsBefore(isoToday(), HISTORY_YEARS), EXTRA_DAYS).slice(0, 7)}-01`;
-  const { histories } = await fetchPriceHistories([...tickers], from, 6);
+  const { histories } = await withinBudget(fetchPriceHistories([...tickers], from, 6), deadline);
   const bench = histories.get(BENCHMARK);
   if (!bench) throw new Error("Couldn't load S&P 500 prices");
 

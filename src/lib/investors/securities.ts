@@ -5,6 +5,7 @@
 
 import { nameKey, resolveCompany, type Company, type CompanyIndex } from "@/lib/exposure/names";
 import type { NportHolding } from "@/lib/exposure/nport";
+import { ETF_CUSIPS } from "./etfs";
 
 // Abbreviations used in 13F issuer names (from the SEC's 13(f) securities list).
 const ABBREVIATIONS: Record<string, string> = {
@@ -102,6 +103,8 @@ export function resolveSecurity(
   cusip: string,
   name: string
 ): Company | null {
+  const etf = ETF_CUSIPS[cusip];
+  if (etf) return index.byTicker.get(etf[0]) ?? { cik: 0, ticker: etf[0], title: etf[1] };
   const expanded = expand13FName(name);
   return (
     cusips.get(cusip) ??

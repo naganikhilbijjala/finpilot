@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { AutoRefresh } from "@/components/investors/AutoRefresh";
 import { ManagerDetail } from "@/components/investors/ManagerDetail";
 import { ArrowRightIcon } from "@/components/ui/Icons";
 import { Notice } from "@/components/ui/Notice";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { loadManagerReport } from "@/lib/investors/load";
+import { loadManagerReport, StillBuildingError } from "@/lib/investors/load";
 import { findManager } from "@/lib/investors/managers";
 import { loadOwnedTickers } from "@/lib/investors/owned";
 import type { ManagerReport } from "@/lib/investors/report";
@@ -14,11 +15,18 @@ import { getCurrentUser } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-async function loadReport(cik: number): Promise<{ report: ManagerReport | null; error: string | null }> {
+interface Loaded {
+  report: ManagerReport | null;
+  error: string | null;
+  building?: boolean;
+}
+
+async function loadReport(cik: number): Promise<Loaded> {
   if (!hasSecAgent()) return { report: null, error: "Set SEC_USER_AGENT to read 13F filings" };
   try {
     return { report: await loadManagerReport(cik), error: null };
   } catch (err) {
+    if (err instanceof StillBuildingError) return { report: null, error: null, building: true };
     console.error(`Investor report ${cik} failed:`, err);
     return { report: null, error: err instanceof Error ? err.message : "Couldn't load this manager's filings" };
   }
@@ -30,7 +38,7 @@ export default async function ManagerPage({ params }: { params: Promise<{ cik: s
   if (!manager) notFound();
 
   const [owned, result] = await Promise.all([loadOwnedTickers(), loadReport(manager.cik)]);
-  const { report, error } = result;
+  const { report, error, building } = result;
 
   return (
     <div className="space-y-6">
@@ -38,7 +46,17 @@ export default async function ManagerPage({ params }: { params: Promise<{ cik: s
         <ArrowRightIcon className="h-4 w-4 rotate-180" /> All investors
       </Link>
       <PageHeader title={manager.name} description={`${manager.person} · ${manager.style}`} />
+      {manager.note && <Notice>{manager.note}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
+      {building && (
+        <>
+          <Notice>
+            Still reading five years of filings for {manager.name}. This page refreshes itself and picks up where it
+            left off; it only takes this long the first time.
+          </Notice>
+          <AutoRefresh />
+        </>
+      )}
       {report && <ManagerDetail manager={manager} report={report} owned={owned} />}
       <p className="text-xs text-gray-500">
         Source: Form 13F filings on{" "}

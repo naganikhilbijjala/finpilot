@@ -156,7 +156,10 @@ export function ManagerDetail({
       </Card>
 
       {report.soldOut.length > 0 && (
-        <Card title="Sold completely last quarter" subtitle="Weight they had in the previous 13F">
+        <Card
+          title="Sold completely last quarter"
+          subtitle={`Weight they had in the previous 13F${report.soldOut.length >= 25 ? ", largest 25" : ""}`}
+        >
           <ul className="flex flex-wrap gap-2">
             {report.soldOut.map((s) => (
               <li key={`${s.ticker}-${s.name}`} className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">

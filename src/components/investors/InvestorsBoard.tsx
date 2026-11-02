@@ -22,14 +22,22 @@ type SortKey = "5" | "3" | "1" | "name";
 // 10 requests a second. Cached reports return instantly, so this costs little.
 const CONCURRENCY = 1;
 const RATE_LIMIT_RETRIES = 4;
+/** Big filers (Jane Street's 13F is ~9 MB a quarter) take several 40-second rounds the first time. */
+const STILL_LOADING_RETRIES = 12;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function fetchReport(cik: number, onWait: (until: number) => void): Promise<ManagerReport> {
+  let rounds = 0;
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(`/api/investors/${cik}`);
     if (res.ok) return res.json();
     const body = await res.json().catch(() => null);
+    if (body?.error === "STILL_LOADING" && rounds++ < STILL_LOADING_RETRIES) {
+      attempt--; // progress, not a failure
+      await sleep(1000);
+      continue;
+    }
     if (res.status === 429 && attempt < RATE_LIMIT_RETRIES) {
       // Filings fetched before the limit hit are cached, so each retry picks up where it stopped.
       const seconds = Number(res.headers.get("retry-after")) || 60;

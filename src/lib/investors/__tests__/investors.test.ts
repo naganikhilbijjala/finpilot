@@ -80,6 +80,15 @@ describe("resolveSecurity", () => {
     expect(resolveSecurity(cusips, index, "000000000", name)?.ticker).toBe(ticker);
   });
 
+  it("identifies ETFs by CUSIP, since 13F names only give the trust", () => {
+    expect(resolveSecurity(cusips, index, "464287655", "ISHARES TR")).toMatchObject({ ticker: "IWM" });
+    expect(resolveSecurity(cusips, index, "78462F103", "STATE STR SPDR S&P 500 ETF T")).toMatchObject({
+      ticker: "SPY",
+      title: "SPDR S&P 500 ETF",
+    });
+    expect(resolveSecurity(cusips, index, "000000000", "ISHARES TR")).toBeNull();
+  });
+
   it("refuses an ambiguous prefix", () => {
     expect(resolveSecurity(cusips, index, "000000000", "TAIWAN SEMICONDUCTOR")).toBeNull();
   });
@@ -184,6 +193,14 @@ describe("buildReport", () => {
       ["GOOGL", 50, 50],
       ["BBB", 50, 50],
     ]);
+  });
+
+  it("measures weights against the whole filing when only the largest positions are kept", () => {
+    const big: Quarter[] = [{ ...quarters[1], totalValue: 1000, positionCount: 4200 }];
+    const r = buildReport({ cik: 1, filer: "T", quarters: big, prices: new Map([["SPY", flat]]), bench: flat.points });
+    expect(r.positionCount).toBe(4200);
+    expect(r.totalValue).toBe(1000);
+    expect(r.holdings[0]).toMatchObject({ ticker: "AAA", pct: 5 });
   });
 
   it("prices only the largest positions", () => {

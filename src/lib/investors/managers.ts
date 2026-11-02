@@ -10,6 +10,8 @@ export interface Manager {
   /** Person most associated with it. */
   person: string;
   style: string;
+  /** Shown on the manager's page when their 13F needs a caveat. */
+  note?: string;
 }
 
 export const MANAGERS: Manager[] = [
@@ -33,6 +35,14 @@ export const MANAGERS: Manager[] = [
   { cik: 1671657, name: "Dorsey Asset Management", person: "Pat Dorsey", style: "Moat investing" },
   { cik: 1641864, name: "Giverny Capital", person: "François Rochon", style: "Quality growth" },
   { cik: 1115373, name: "Semper Augustus", person: "Chris Bloomstran", style: "Value" },
+  {
+    cik: 1595888,
+    name: "Jane Street",
+    person: "Partnership",
+    style: "Market maker, mostly hedged",
+    note:
+      "Jane Street is a trading firm, not a stock picker. About 87% of the value in its 13F is options, which aren't copied here, and its shares are mostly inventory and hedges for market making, held briefly. Its 13F lists thousands of positions; the copied return holds its 40 largest each quarter, so it shows what owning its biggest reported positions would have done, not how Jane Street itself performed.",
+  },
 ];
 
 export const findManager = (cik: number) => MANAGERS.find((m) => m.cik === cik) ?? null;

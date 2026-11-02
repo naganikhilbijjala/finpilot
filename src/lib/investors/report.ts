@@ -14,8 +14,14 @@ export interface ResolvedPosition extends Position {
 export interface Quarter {
   filedAt: string;
   reportDate: string;
+  /** Largest positions only, for filers with thousands. */
   positions: ResolvedPosition[];
+  /** All long stock positions in the filing, when more were filed than kept. */
+  totalValue?: number;
+  positionCount?: number;
 }
+
+const totalOf = (q: Quarter) => q.totalValue ?? q.positions.reduce((s, p) => s + p.value, 0);
 
 export type Change = "new" | "added" | "reduced";
 
@@ -54,6 +60,7 @@ export interface ManagerReport {
 }
 
 export const SHOWN_HOLDINGS = 40;
+export const SHOWN_SOLD = 25;
 /** Share-count moves smaller than this are noise (rounding, small trims). */
 const CHANGE_THRESHOLD = 0.05;
 
@@ -105,8 +112,8 @@ export function buildReport(input: {
     .sort((a, b) => a.filedAt.localeCompare(b.filedAt));
   const latest = quarters[quarters.length - 1];
   const prev = quarters.length > 1 ? quarters[quarters.length - 2] : null;
-  const total = latest.positions.reduce((s, p) => s + p.value, 0);
-  const prevTotal = prev?.positions.reduce((s, p) => s + p.value, 0) ?? 0;
+  const total = totalOf(latest);
+  const prevTotal = prev ? totalOf(prev) : 0;
   // Matched by ticker where known, since the largest share class (and so the CUSIP) can change.
   const keyOf = (p: ResolvedPosition) => p.ticker ?? p.cusip;
   const prevByKey = new Map(prev?.positions.map((p) => [keyOf(p), p]));
@@ -141,13 +148,15 @@ export function buildReport(input: {
 
   const soldOut: SoldOut[] = (prev?.positions ?? [])
     .filter((p) => !latestKeys.has(keyOf(p)) && prevTotal > 0 && p.value / prevTotal >= 0.001)
-    .map((p) => ({ ticker: p.ticker, name: p.displayName, prevPct: (p.value / prevTotal) * 100 }));
+    .map((p) => ({ ticker: p.ticker, name: p.displayName, prevPct: (p.value / prevTotal) * 100 }))
+    .sort((a, b) => b.prevPct - a.prevPct)
+    .slice(0, SHOWN_SOLD);
 
   const prices = new Map([...input.prices].map(([t, h]) => [t, h.points]));
   const clone = computeClone(
     quarters.map((q) => ({
       filedAt: q.filedAt,
-      totalValue: q.positions.reduce((s, p) => s + p.value, 0),
+      totalValue: totalOf(q),
       holdings: positionsToPrice(q).map((p) => ({ ticker: p.ticker as string, value: p.value })),
     })),
     prices,
@@ -161,7 +170,7 @@ export function buildReport(input: {
     reportDate: latest.reportDate,
     filedAt: latest.filedAt,
     totalValue: total,
-    positionCount: latest.positions.length,
+    positionCount: latest.positionCount ?? latest.positions.length,
     holdings,
     soldOut,
     clone,
