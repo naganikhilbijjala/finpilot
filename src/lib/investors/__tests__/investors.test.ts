@@ -133,6 +133,19 @@ describe("computeClone", () => {
     expect(one.bench).toBeGreaterThan(0);
   });
 
+  it("adds a 10-year window once there's that much history", () => {
+    const long = days("2014-01-01", 4100);
+    const r = computeClone(
+      [{ filedAt: long[0], totalValue: 1, holdings: [{ ticker: "X", value: 1 }] }],
+      new Map([["X", series(long, (i) => 10 * 1.0003 ** i)]]),
+      series(long, () => 100)
+    )!;
+    expect(r.windows.map((w) => w.years)).toEqual([1, 3, 5, 10]);
+    const ten = r.windows[3];
+    expect(ten.bench).toBeCloseTo(0);
+    expect(ten.cloneAnnual).toBeCloseTo((1 + ten.clone) ** 0.1 - 1);
+  });
+
   it("weights by value and skips stocks without prices", () => {
     const prices = new Map([
       ["A", series(dates, (i) => (i < 10 ? 10 : 20))],

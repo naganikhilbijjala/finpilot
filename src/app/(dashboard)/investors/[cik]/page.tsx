@@ -51,7 +51,7 @@ export default async function ManagerPage({ params }: { params: Promise<{ cik: s
       {building && (
         <>
           <Notice>
-            Still reading five years of filings for {manager.name}. This page refreshes itself and picks up where it
+            Still reading ten years of filings for {manager.name}. This page refreshes itself and picks up where it
             left off; it only takes this long the first time.
           </Notice>
           <AutoRefresh />

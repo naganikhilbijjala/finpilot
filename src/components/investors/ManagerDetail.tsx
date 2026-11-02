@@ -26,7 +26,6 @@ export function ManagerDetail({
   report: ManagerReport;
   owned: Record<string, number>;
 }) {
-  const five = report.clone?.windows.find((w) => w.years === 5);
   const longest = report.clone?.windows[report.clone.windows.length - 1];
   const hasOwned = Object.keys(owned).length > 0;
   const shared = report.holdings.filter((h) => h.ticker && owned[h.ticker] !== undefined);
@@ -70,7 +69,7 @@ export function ManagerDetail({
           subtitle="Bought at each 13F's weights the day it was published, held until the next one. Dividends included."
         >
           <CloneChart series={report.clone.series} name={manager.name} />
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {report.clone.windows.map((w) => (
               <div key={w.years} className="rounded-xl border border-gray-200/80 bg-gray-50/60 p-4">
                 <div className="text-xs font-medium uppercase tracking-wider text-gray-500">{w.years} year{w.years > 1 && "s"}</div>
@@ -85,7 +84,11 @@ export function ManagerDetail({
           </div>
           <p className="mt-4 text-xs text-gray-500">
             {Math.round(report.clone.coverage * 100)}% of each portfolio was copied on average: the largest positions up
-            to 95% of its value or 40 stocks. {five ? "" : "Less than five years of filings are available. "}
+            to 95% of its value or 40 stocks. {report.clone.windows.some((w) => w.years === 10)
+              ? ""
+              : "This manager's current firm has filed for less than ten years. "}
+            Stocks that were later bought out or delisted have no prices, so they're left out and their weight goes to
+            the rest.
           </p>
         </Card>
       ) : (

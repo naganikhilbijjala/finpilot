@@ -12,8 +12,11 @@ import { infoTableFile, parseInfoTable, toPositions, type Position } from "./thi
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
-/** Five years of copied returns need the filing published just before the window opens. */
-const HISTORY_YEARS = 5;
+/**
+ * Ten years of copied returns (13F tables have been machine-readable since
+ * 2013) need the filing published just before the window opens.
+ */
+const HISTORY_YEARS = 10;
 const EXTRA_DAYS = 120;
 /**
  * Positions kept per filing. All of them, in practice (Jane Street files ~5,500),
@@ -180,7 +183,7 @@ async function buildManagerReport(cik: number): Promise<ManagerReport> {
   return buildReport({ cik, filer, quarters, prices: histories, bench: bench.points });
 }
 
-const cachedReport = unstable_cache(buildManagerReport, ["investor-report-v1"], { revalidate: 12 * HOUR });
+const cachedReport = unstable_cache(buildManagerReport, ["investor-report-v2"], { revalidate: 12 * HOUR });
 const reports = memo<ManagerReport>(HOUR * 1000);
 
 export class UnknownManagerError extends Error {}

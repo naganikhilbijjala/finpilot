@@ -33,7 +33,7 @@ export interface CloneResult {
   coverage: number;
 }
 
-export const WINDOW_YEARS = [1, 3, 5] as const;
+export const WINDOW_YEARS = [1, 3, 5, 10] as const;
 const STALE_DAYS = 7;
 
 const addDays = (iso: string, days: number) =>

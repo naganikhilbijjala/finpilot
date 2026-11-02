@@ -15,7 +15,7 @@ type Status =
   | { state: "waiting"; until: number }
   | { state: "ok"; report: ManagerReport }
   | { state: "error"; message: string };
-type SortKey = "5" | "3" | "1" | "name";
+type SortKey = "10" | "5" | "3" | "1" | "name";
 
 // One at a time: a cold report reads dozens of SEC files, and parallel calls can
 // land on separate servers that each pace themselves, together exceeding the SEC's
@@ -24,7 +24,7 @@ const CONCURRENCY = 1;
 const CONSENSUS_PAGE = 30;
 const RATE_LIMIT_RETRIES = 4;
 /** Big filers (Jane Street's 13F is ~9 MB a quarter) take several 40-second rounds the first time. */
-const STILL_LOADING_RETRIES = 12;
+const STILL_LOADING_RETRIES = 20;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -152,6 +152,7 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
             aria-label="Sort managers"
             className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-800 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
           >
+            <option value="10">Best vs S&P, 10 years</option>
             <option value="5">Best vs S&P, 5 years</option>
             <option value="3">Best vs S&P, 3 years</option>
             <option value="1">Best vs S&P, 1 year</option>
@@ -164,7 +165,7 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
             Loaded {loaded} of {managers.length}.{" "}
             {waiting
               ? "The SEC asked us to slow down, so the next manager will resume in about a minute (nothing is lost)."
-              : "The first visit of the day reads five years of filings for each manager; after that it's instant."}
+              : "The first visit of the day reads ten years of filings for each manager; after that it's instant."}
           </p>
         )}
         <div className="overflow-x-auto px-5 pb-5 sm:px-6">
@@ -175,6 +176,7 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
                 <th className="px-3 py-2">1 year</th>
                 <th className="px-3 py-2">3 years</th>
                 <th className="px-3 py-2">5 years</th>
+                <th className="px-3 py-2">10 years</th>
                 <th className="min-w-[12rem] px-3 py-2">Biggest holdings</th>
                 <th className="py-2 pl-3">Latest 13F</th>
               </tr>
@@ -194,16 +196,16 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
                       </div>
                     </td>
                     {s?.state === "loading" ? (
-                      <td colSpan={5} className="px-3 py-3">
+                      <td colSpan={6} className="px-3 py-3">
                         <div className="h-8 animate-pulse rounded-lg bg-gray-100" />
                       </td>
                     ) : s?.state === "waiting" ? (
-                      <td colSpan={5} className="px-3 py-3 text-xs text-amber-800">
+                      <td colSpan={6} className="px-3 py-3 text-xs text-amber-800">
                         SEC rate limit reached; retrying at{" "}
                         {new Date(s.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                       </td>
                     ) : s?.state === "error" ? (
-                      <td colSpan={5} className="px-3 py-3 text-xs text-rose-700">
+                      <td colSpan={6} className="px-3 py-3 text-xs text-rose-700">
                         Couldn&apos;t load: {s.message}
                       </td>
                     ) : (
@@ -216,6 +218,9 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
                         </td>
                         <td className="px-3 py-3">
                           <Returns report={report} years={5} />
+                        </td>
+                        <td className="px-3 py-3">
+                          <Returns report={report} years={10} />
                         </td>
                         <td className="num px-3 py-3 text-xs text-gray-600">
                           {report?.holdings.slice(0, 4).map((h) => (
