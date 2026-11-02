@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { filterSnapshot } from "@/lib/groups/groups";
 import { userAgent } from "@/lib/screener/edgar";
 import { buildOverview } from "@/lib/snaptrade/aggregate";
@@ -51,35 +52,48 @@ const companies = cached<CompanyIndex>(DAY);
 const seriesMap = cached<Map<string, string>>(DAY);
 const filings = cached<NportFiling>(DAY / 2);
 
-const loadCompanyIndex = () =>
-  companies("all", async () =>
-    buildCompanyIndex(await (await secFetch("https://www.sec.gov/files/company_tickers.json")).json())
-  );
+// SEC data is public, so it also goes in Next's persistent cache: a cold
+// serverless start reuses it instead of downloading megabytes again. Stored
+// compactly to stay well under the data cache's 2 MB per-entry limit.
+const DAY_S = 24 * 60 * 60;
+
+const fetchCompanyRows = unstable_cache(
+  async (): Promise<[number, string, string][]> => {
+    const body = (await (await secFetch("https://www.sec.gov/files/company_tickers.json")).json()) as Record<
+      string,
+      { cik_str: number; ticker: string; title: string }
+    >;
+    return Object.values(body).map((e) => [e.cik_str, e.ticker, e.title]);
+  },
+  ["sec-company-tickers-v1"],
+  { revalidate: DAY_S }
+);
 
 /** Fund ticker -> SEC series id, from the SEC's mutual fund and ETF ticker file. */
-const loadSeriesMap = () =>
-  seriesMap("all", async () => {
+const fetchSeriesPairs = unstable_cache(
+  async (): Promise<[string, string][]> => {
     const body = (await (await secFetch("https://www.sec.gov/files/company_tickers_mf.json")).json()) as {
       fields?: string[];
       data?: unknown[][];
     };
     const seriesCol = body.fields?.indexOf("seriesId") ?? -1;
     const symbolCol = body.fields?.indexOf("symbol") ?? -1;
-    const map = new Map<string, string>();
     if (seriesCol < 0 || symbolCol < 0) throw new Error("SEC fund ticker file changed shape");
+    const pairs: [string, string][] = [];
     for (const row of body.data ?? []) {
       const symbol = row[symbolCol];
       const series = row[seriesCol];
-      if (typeof symbol === "string" && typeof series === "string") {
-        map.set(normalizeTicker(symbol), series);
-      }
+      if (typeof symbol === "string" && typeof series === "string") pairs.push([normalizeTicker(symbol), series]);
     }
-    return map;
-  });
+    return pairs;
+  },
+  ["sec-fund-series-v1"],
+  { revalidate: DAY_S }
+);
 
 /** Latest N-PORT holdings for a fund series. */
-const loadFiling = (seriesId: string) =>
-  filings(seriesId, async () => {
+const fetchFiling = unstable_cache(
+  async (seriesId: string): Promise<NportFiling> => {
     const feed = await (
       await secFetch(
         `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${seriesId}&type=NPORT-P&dateb=&owner=include&count=1&output=atom`
@@ -92,8 +106,22 @@ const loadFiling = (seriesId: string) =>
     if (filing.seriesId && filing.seriesId !== seriesId) {
       throw new Error(`N-PORT for ${seriesId} described ${filing.seriesId}`);
     }
-    return filing;
+    // CUSIPs aren't used by the calculation; dropping them keeps big bond funds cacheable.
+    return { ...filing, holdings: filing.holdings.map((h) => ({ ...h, cusip: null })) };
+  },
+  ["sec-nport-v1"],
+  { revalidate: DAY_S / 2 }
+);
+
+const loadCompanyIndex = () =>
+  companies("all", async () => {
+    const rows = await fetchCompanyRows();
+    return buildCompanyIndex(rows.map(([cik_str, ticker, title]) => ({ cik_str, ticker, title })));
   });
+
+const loadSeriesMap = () => seriesMap("all", async () => new Map(await fetchSeriesPairs()));
+
+const loadFiling = (seriesId: string) => filings(seriesId, () => fetchFiling(seriesId));
 
 const FUND_KINDS = /etf|fund|mutual|oef|cef|uit/i;
 

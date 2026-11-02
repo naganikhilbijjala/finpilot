@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import {
   DEFAULT_EMERGENCY_TARGET,
@@ -16,8 +17,11 @@ export interface GroupSettings {
 
 const KINDS: GroupKind[] = ["investments", "emergency", "managed"];
 
-/** Never throws: a missing table or outage means "nothing grouped yet". */
-export async function getGroupSettings(): Promise<GroupSettings> {
+/**
+ * Never throws: a missing table or outage means "nothing grouped yet".
+ * Loaded once per request however many sections ask.
+ */
+export const getGroupSettings = cache(async (): Promise<GroupSettings> => {
   const fallback = { assignments: [], target: DEFAULT_EMERGENCY_TARGET, available: false };
   try {
     const supabase = await createClient();
@@ -56,4 +60,4 @@ export async function getGroupSettings(): Promise<GroupSettings> {
     console.error("Loading account groups failed:", err);
     return fallback;
   }
-}
+});

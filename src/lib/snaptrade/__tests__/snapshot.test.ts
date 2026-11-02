@@ -40,9 +40,9 @@ const positions = {
   },
 };
 
-const sdkError = () =>
+const sdkError = (status = 410) =>
   new Error(
-    'Request failed with status code 410 RESPONSE HEADERS: { "server": "do-not-leak" }'
+    `Request failed with status code ${status} RESPONSE HEADERS: { "server": "do-not-leak" }`
   );
 
 describe("fetchSnapshot", () => {
@@ -102,5 +102,44 @@ describe("fetchSnapshot", () => {
   it("throws when the account list cannot be fetched", async () => {
     listUserAccounts.mockRejectedValue(new Error("down"));
     await expect(fetchSnapshot()).rejects.toThrow("down");
+  });
+
+  it("shares one fetch between concurrent callers", async () => {
+    listUserAccounts.mockResolvedValue({ data: [acct("a", "Fidelity"), acct("b", "Robinhood")] });
+    getAllAccountPositions.mockResolvedValue(positions);
+    getUserAccountBalance.mockResolvedValue({ data: [{ cash: 7 }] });
+
+    const results = await Promise.all(Array.from({ length: 6 }, () => fetchSnapshot()));
+    expect(new Set(results).size).toBe(1);
+    expect(listUserAccounts).toHaveBeenCalledTimes(1);
+    expect(getAllAccountPositions).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries an account once when rate limited", async () => {
+    listUserAccounts.mockResolvedValue({ data: [acct("a", "Fidelity")] });
+    getAllAccountPositions.mockRejectedValueOnce(sdkError(429)).mockResolvedValue(positions);
+    getUserAccountBalance.mockResolvedValue({ data: [{ cash: 7 }] });
+
+    const result = await fetchSnapshot();
+    expect(result.failures).toEqual([]);
+    expect(result.accounts[0].positions).toHaveLength(1);
+    expect(getAllAccountPositions).toHaveBeenCalledTimes(2);
+  });
+
+  it("refetches a partial result sooner than a complete one", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      listUserAccounts.mockResolvedValue({ data: [acct("a", "Fidelity")] });
+      getAllAccountPositions.mockRejectedValue(sdkError(410));
+      getUserAccountBalance.mockResolvedValue({ data: [] });
+
+      expect((await fetchSnapshot()).failures).toHaveLength(1);
+      vi.setSystemTime(Date.now() + 11_000);
+      getAllAccountPositions.mockResolvedValue(positions);
+      expect((await fetchSnapshot()).failures).toHaveLength(0);
+      expect(listUserAccounts).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

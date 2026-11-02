@@ -12,7 +12,7 @@ import { PRESETS, runScreen } from "@/lib/screener/screen";
 import { getUniverse } from "@/lib/screener/custom";
 import { hasFundamentals, type StoredData } from "@/lib/screener/types";
 import { checkOwner } from "@/lib/snaptrade/owner";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +25,8 @@ export default async function ScreenerPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  const user = await getCurrentUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const owner = await checkOwner();

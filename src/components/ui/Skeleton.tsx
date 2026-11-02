@@ -28,3 +28,36 @@ export function StatsSkeleton() {
     </div>
   );
 }
+
+/**
+ * Shown instantly while a page's data loads (route-level loading.tsx), so a
+ * click gives feedback right away instead of the old page sitting frozen.
+ */
+export function PageSkeleton({
+  title,
+  stats = true,
+  cards = 2,
+}: {
+  /** Omit when the real title depends on the data (e.g. a stock page). */
+  title?: string;
+  stats?: boolean;
+  cards?: number;
+}) {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-live="polite">
+      <div>
+        {title ? (
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">{title}</h1>
+        ) : (
+          <Skeleton className="h-8 w-48" />
+        )}
+        <Skeleton className="mt-3 h-4 w-full max-w-md" />
+        <span className="sr-only">Loading{title ? ` ${title}` : ""}…</span>
+      </div>
+      {stats && <StatsSkeleton />}
+      {Array.from({ length: cards }).map((_, i) => (
+        <CardSkeleton key={i} height={i === 0 ? "h-72" : "h-48"} />
+      ))}
+    </div>
+  );
+}

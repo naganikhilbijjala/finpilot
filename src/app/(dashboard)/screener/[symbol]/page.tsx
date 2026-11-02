@@ -12,7 +12,7 @@ import { CATEGORY_LABELS } from "@/lib/screener/metrics";
 import { buildIncomeSankey } from "@/lib/screener/sankey";
 import { findConstituent } from "@/lib/screener/symbols";
 import { hasFundamentals, type StoredData } from "@/lib/screener/types";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { formatCompactMoney } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
@@ -38,10 +38,8 @@ export default async function StockPage({
   const constituent = findConstituent(symbol, await getUniverse());
   if (!constituent) notFound();
 
+  const user = await getCurrentUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const { data: row } = await supabase

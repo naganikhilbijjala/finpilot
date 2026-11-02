@@ -10,16 +10,13 @@ import { PlusIcon, UploadIcon } from "@/components/ui/Icons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton, StatsSkeleton } from "@/components/ui/Skeleton";
 import { isOwnerEmail } from "@/lib/snaptrade/owner";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 // Brokerage data must be fresh per request, never statically rendered.
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const isOwner = isOwnerEmail(user.email);

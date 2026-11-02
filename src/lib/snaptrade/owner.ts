@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 /**
  * A SnapTrade Personal key represents one person, so SnapTrade data is only
@@ -15,10 +15,7 @@ export type OwnerCheck =
   | { ok: false; status: 401 | 403; message: string };
 
 export async function checkOwner(): Promise<OwnerCheck> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     return { ok: false, status: 401, message: "You must be logged in" };

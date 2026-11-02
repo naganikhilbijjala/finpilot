@@ -3,7 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { UniverseProvider } from "@/components/screener/UniverseProvider";
 import { getCustomStocks } from "@/lib/screener/custom";
 import { isOwnerEmail } from "@/lib/snaptrade/owner";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { signOut } from "./actions";
 
 export default async function DashboardLayout({
@@ -11,10 +11,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const email = user.email ?? "Account";
