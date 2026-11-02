@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { BreakdownsSkeleton, ExposureBreakdowns } from "@/components/exposure/ExposureBreakdowns";
 import { ViewSwitcher } from "@/components/groups/ViewSwitcher";
 import { resolvePageView, type ResolvedView } from "@/lib/groups/views";
 import { ExposureView } from "@/components/exposure/ExposureView";
@@ -43,7 +45,7 @@ export default async function ExposurePage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Stock exposure"
         actions={scope && <ViewSwitcher views={scope.views} active={scope.view.key} />}
-        description="Your real ownership of each company once ETFs and mutual funds are split into what they hold, so NVDA bought directly and NVDA inside VOO or QQQ count together."
+        description="Your real ownership of each company once ETFs and mutual funds are split into what they hold, so NVDA bought directly and NVDA inside VOO or QQQ count together, plus the same view by sector and country."
       />
 
       {error && <Notice tone="error">{error}</Notice>}
@@ -67,7 +69,15 @@ export default async function ExposurePage({ searchParams }: { searchParams: Pro
             quarter ends, so weights can drift from today&apos;s. Share classes such as GOOGL and
             GOOG are combined.
           </Notice>
-          <ExposureView exposure={data.exposure} currency={data.currency} />
+          <ExposureView
+            exposure={data.exposure}
+            currency={data.currency}
+            breakdowns={
+              <Suspense fallback={<BreakdownsSkeleton />}>
+                <ExposureBreakdowns exposure={data.exposure} currency={data.currency} />
+              </Suspense>
+            }
+          />
         </>
       )}
     </div>

@@ -17,13 +17,15 @@ const index = buildCompanyIndex({
   10: { cik_str: 937966, ticker: "ASML", title: "ASML HOLDING NV" },
 });
 
-const xml = (rows: [string, number, string][], asOf = "2026-06-30") => `
+const xml = (rows: [string, number, string, string?][], asOf = "2026-06-30") => `
 <edgarSubmission><formData><genInfo><seriesName>Test Fund</seriesName><seriesId>S000000001</seriesId>
 <repPdDate>${asOf}</repPdDate></genInfo><invstOrSecs>
 ${rows
   .map(
-    ([name, pct, cat]) =>
-      `<invstOrSec><name>${name}</name><cusip>123456789</cusip><pctVal>${pct}</pctVal><assetCat>${cat}</assetCat></invstOrSec>`
+    ([name, pct, cat, country]) =>
+      `<invstOrSec><name>${name}</name><cusip>123456789</cusip><pctVal>${pct}</pctVal><assetCat>${cat}</assetCat>${
+        country ? `<invCountry>${country}</invCountry>` : ""
+      }</invstOrSec>`
   )
   .join("\n")}
 </invstOrSecs></formData></edgarSubmission>`;
@@ -34,9 +36,14 @@ describe("parseNport", () => {
     expect(f.asOf).toBe("2026-06-30");
     expect(f.seriesId).toBe("S000000001");
     expect(f.holdings).toEqual([
-      { name: "Eli Lilly & Co", cusip: "123456789", pct: 1.5, assetCat: "EC" },
-      { name: "Money Fund", cusip: "123456789", pct: 0.3, assetCat: "STIV" },
+      { name: "Eli Lilly & Co", cusip: "123456789", pct: 1.5, assetCat: "EC", country: null },
+      { name: "Money Fund", cusip: "123456789", pct: 0.3, assetCat: "STIV", country: null },
     ]);
+  });
+
+  it("reads the issuer country and ignores placeholders", () => {
+    const f = parseNport(xml([["ASML Holding NV", 1, "EC", "NL"], ["Other", 1, "EC", "N/A"]]));
+    expect(f.holdings.map((h) => h.country)).toEqual(["NL", null]);
   });
 });
 
@@ -66,7 +73,21 @@ describe("resolveCompany", () => {
 });
 
 describe("computeExposure", () => {
-  const fund = (rows: [string, number, string][]): { filing: NportFiling } => ({ filing: parseNport(xml(rows)) });
+  const fund = (rows: [string, number, string, string?][]): { filing: NportFiling } => ({
+    filing: parseNport(xml(rows)),
+  });
+
+  it("carries the company number and the country a fund reports", () => {
+    const e = computeExposure(
+      [
+        { ticker: "ASML", description: "ASML", marketValue: 100, isFund: false },
+        { ticker: "VXUS", description: null, marketValue: 100, isFund: true },
+      ],
+      new Map([["VXUS", fund([["ASML Holding N.V.", 100, "EC", "NL"]])]]),
+      index
+    );
+    expect(e.rows[0]).toMatchObject({ ticker: "ASML", cik: 937966, country: "NL", value: 200 });
+  });
 
   it("combines direct shares with each fund's slice", () => {
     const funds = new Map([

@@ -33,6 +33,10 @@ export interface ExposureRow {
   kind: RowKind;
   /** Null for issuers with no SEC ticker (most non-US companies) and buckets. */
   ticker: string | null;
+  /** SEC company number, when the company is in the SEC's list. */
+  cik: number | null;
+  /** Issuer country as an ISO code, from the funds' filings ("US", "TW"). */
+  country: string | null;
   name: string;
   value: number;
   /** Percent of total invested value. */
@@ -84,28 +88,42 @@ export function computeExposure(
   const rows = new Map<string, Omit<ExposureRow, "pct" | "sources"> & { sources: Map<string, number> }>();
   const add = (
     key: string,
-    init: () => Pick<ExposureRow, "kind" | "ticker" | "name">,
+    init: () => Pick<ExposureRow, "kind" | "ticker" | "name"> & { cik?: number | null },
     source: string | null,
-    value: number
+    value: number,
+    country: string | null = null
   ) => {
-    const row = rows.get(key) ?? { key, ...init(), value: 0, sources: new Map() };
+    const row = rows.get(key) ?? { key, cik: null, country: null, ...init(), value: 0, sources: new Map() };
+    if (!row.country && country) row.country = country;
     row.value += value;
     const s = source ?? "";
     row.sources.set(s, (row.sources.get(s) ?? 0) + value);
     rows.set(key, row);
   };
-  const addCompany = (name: string, ticker: string | null, source: string | null, value: number) => {
+  const addCompany = (
+    name: string,
+    ticker: string | null,
+    source: string | null,
+    value: number,
+    country: string | null = null
+  ) => {
     const company = ticker ? index.byTicker.get(normalizeTicker(ticker)) : resolveCompany(index, name);
     if (company) {
       const key = `cik:${company.cik}`;
-      add(key, () => ({ kind: "company", ticker: company.ticker, name: displayName(company.title) }), source, value);
+      add(
+        key,
+        () => ({ kind: "company", ticker: company.ticker, cik: company.cik, name: displayName(company.title) }),
+        source,
+        value,
+        country
+      );
       // Funds write "NVIDIA Corp" where the SEC list says "NVIDIA CORP"; prefer the readable one.
       const row = rows.get(key)!;
       if (source && isShouting(row.name) && !isShouting(name)) row.name = displayName(name);
     } else if (ticker) {
-      add(`t:${normalizeTicker(ticker)}`, () => ({ kind: "company", ticker, name }), source, value);
+      add(`t:${normalizeTicker(ticker)}`, () => ({ kind: "company", ticker, name }), source, value, country);
     } else {
-      add(`n:${nameKey(name) || name.toUpperCase()}`, () => ({ kind: "company", ticker: null, name }), source, value);
+      add(`n:${nameKey(name) || name.toUpperCase()}`, () => ({ kind: "company", ticker: null, name }), source, value, country);
     }
   };
   const addBucket = (kind: Exclude<RowKind, "company" | "fund">, source: string | null, value: number) =>
@@ -148,7 +166,7 @@ export function computeExposure(
       }
       const company = resolveCompany(index, h.name);
       if (company) matched += h.pct;
-      addCompany(h.name, company?.ticker ?? null, p.ticker, value);
+      addCompany(h.name, company?.ticker ?? null, p.ticker, value, h.country ?? null);
     }
     coverage.push({
       ticker: p.ticker,

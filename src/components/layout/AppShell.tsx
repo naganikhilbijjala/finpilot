@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   BankIcon,
   ChartIcon,
+  DocumentIcon,
   HomeIcon,
   LayersIcon,
   LogoutIcon,
@@ -27,6 +28,7 @@ function buildSections(isOwner: boolean): NavSection[] {
       items: [
         { href: "/overview", label: "Overview", icon: <WalletIcon /> },
         { href: "/exposure", label: "Stock exposure", icon: <LayersIcon /> },
+        { href: "/filings", label: "Company filings", icon: <DocumentIcon /> },
         { href: "/performance", label: "Performance", icon: <ChartIcon /> },
         { href: "/returns", label: "Returns", icon: <PercentIcon /> },
         { href: "/accounts", label: "Accounts", icon: <BankIcon /> },

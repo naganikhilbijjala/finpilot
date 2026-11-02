@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { categoryColor } from "@/components/charts/theme";
 import { TickerLink } from "@/components/screener/TickerLink";
 import { Card } from "@/components/ui/Card";
@@ -18,7 +18,16 @@ const REST_COLOR = "#cbd5e1";
 const money = (v: number, currency: string | null) => formatMoney(v, currency).replace(/\.\d+$/, "");
 const label = (r: ExposureRow) => r.ticker ?? r.name;
 
-export function ExposureView({ exposure, currency }: { exposure: Exposure; currency: string | null }) {
+export function ExposureView({
+  exposure,
+  currency,
+  breakdowns,
+}: {
+  exposure: Exposure;
+  currency: string | null;
+  /** Sector and country cards, streamed from the server. */
+  breakdowns?: ReactNode;
+}) {
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const { rows, total, funds } = exposure;
@@ -98,6 +107,8 @@ export function ExposureView({ exposure, currency }: { exposure: Exposure; curre
       >
         <ExposureDonut slices={slices} currency={currency} />
       </Card>
+
+      {breakdowns}
 
       <Card
         title="Every company you own"

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { BrokerageOverview } from "@/components/dashboard/BrokerageOverview";
+import { FilingsPreview } from "@/components/dashboard/FilingsPreview";
 import { GroupCards } from "@/components/dashboard/GroupCards";
 import { ManualPortfolio } from "@/components/dashboard/ManualPortfolio";
 import { PerformancePreview } from "@/components/dashboard/PerformancePreview";
@@ -73,6 +74,10 @@ export default async function DashboardPage() {
 
           <Suspense fallback={<CardSkeleton height="h-96" />}>
             <PerformancePreview />
+          </Suspense>
+
+          <Suspense fallback={<CardSkeleton height="h-72" />}>
+            <FilingsPreview />
           </Suspense>
         </>
       )}

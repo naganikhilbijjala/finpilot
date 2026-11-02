@@ -8,6 +8,8 @@ export interface NportHolding {
   pct: number;
   /** N-PORT asset category: EC equity, EP preferred, DBT debt, STIV short-term vehicle, DE derivative, RF registered fund... */
   assetCat: string | null;
+  /** ISO 3166 two-letter country of the issuer, e.g. "US", "TW". */
+  country: string | null;
 }
 
 export interface NportFiling {
@@ -34,6 +36,9 @@ const tag = (block: string, name: string): string | null => {
   return m ? decodeXml(m[1].trim()) : null;
 };
 
+const countryCode = (raw: string | null): string | null =>
+  raw && /^[A-Z]{2}$/.test(raw.toUpperCase()) ? raw.toUpperCase() : null;
+
 export function parseNport(xml: string): NportFiling {
   const holdings: NportHolding[] = [];
   for (const m of xml.matchAll(/<invstOrSec>([\s\S]*?)<\/invstOrSec>/g)) {
@@ -47,6 +52,7 @@ export function parseNport(xml: string): NportFiling {
       cusip: cusip && cusip !== "N/A" && cusip !== "000000000" ? cusip : null,
       pct,
       assetCat: tag(block, "assetCat"),
+      country: countryCode(tag(block, "invCountry")),
     });
   }
   return {

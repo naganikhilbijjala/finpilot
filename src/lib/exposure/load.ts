@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { filterSnapshot } from "@/lib/groups/groups";
-import { userAgent } from "@/lib/screener/edgar";
+import { secFetch } from "@/lib/sec/client";
 import { buildOverview } from "@/lib/snaptrade/aggregate";
 import { fetchSnapshot } from "@/lib/snaptrade/snapshot";
 import type { SnapshotFailure } from "@/lib/snaptrade/types";
@@ -23,15 +23,6 @@ const DAY = 24 * 60 * 60 * 1000;
 const RETRY_AFTER_FAILURE = 10 * 60 * 1000;
 
 export class MissingSecAgentError extends Error {}
-
-async function secFetch(url: string): Promise<Response> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": userAgent(), Accept: "application/json, application/xml, text/xml" },
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`SEC ${res.status} for ${new URL(url).pathname}`);
-  return res;
-}
 
 /** Caches one value per key; failures expire quickly so outages self-heal. */
 function cached<T>(ttl: number) {
@@ -109,7 +100,7 @@ const fetchFiling = unstable_cache(
     // CUSIPs aren't used by the calculation; dropping them keeps big bond funds cacheable.
     return { ...filing, holdings: filing.holdings.map((h) => ({ ...h, cusip: null })) };
   },
-  ["sec-nport-v1"],
+  ["sec-nport-v2"],
   { revalidate: DAY_S / 2 }
 );
 
