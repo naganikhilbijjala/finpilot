@@ -10,19 +10,39 @@ import type { ManagerReport } from "@/lib/investors/report";
 import { EdgeBadge } from "./EdgeBadge";
 import { pct, quarterLabel, shortDate } from "./format";
 
-type Status = { state: "loading" } | { state: "ok"; report: ManagerReport } | { state: "error"; message: string };
+type Status =
+  | { state: "loading" }
+  | { state: "waiting"; until: number }
+  | { state: "ok"; report: ManagerReport }
+  | { state: "error"; message: string };
 type SortKey = "5" | "3" | "1" | "name";
 
-// Two at a time: a cold report reads dozens of SEC files and the SEC allows 10 requests a second.
-const CONCURRENCY = 2;
+// One at a time: a cold report reads dozens of SEC files, and parallel calls can
+// land on separate servers that each pace themselves, together exceeding the SEC's
+// 10 requests a second. Cached reports return instantly, so this costs little.
+const CONCURRENCY = 1;
+const RATE_LIMIT_RETRIES = 4;
 
-async function fetchReport(cik: number): Promise<ManagerReport> {
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchReport(cik: number, onWait: (until: number) => void): Promise<ManagerReport> {
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(`/api/investors/${cik}`);
     if (res.ok) return res.json();
     const body = await res.json().catch(() => null);
-    // One retry covers a cold start that ran out of time; the cache keeps its progress.
-    if (attempt === 0 && res.status >= 500) continue;
+    if (res.status === 429 && attempt < RATE_LIMIT_RETRIES) {
+      // Filings fetched before the limit hit are cached, so each retry picks up where it stopped.
+      const seconds = Number(res.headers.get("retry-after")) || 60;
+      const until = Date.now() + seconds * 1000;
+      onWait(until);
+      await sleep(seconds * 1000);
+      continue;
+    }
+    // One quick retry covers a cold start that ran out of time.
+    if (attempt === 0 && res.status >= 500) {
+      await sleep(3000);
+      continue;
+    }
     throw new Error(body?.message ?? `HTTP ${res.status}`);
   }
 }
@@ -54,7 +74,12 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
         const cik = m.cik;
         let next: Status;
         try {
-          next = { state: "ok", report: await fetchReport(cik) };
+          next = {
+            state: "ok",
+            report: await fetchReport(cik, (until) => {
+              if (!cancelled) setStatus((s) => ({ ...s, [cik]: { state: "waiting", until } }));
+            }),
+          };
         } catch (err) {
           next = { state: "error", message: err instanceof Error ? err.message : "Couldn't load" };
         }
@@ -71,7 +96,11 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
     const s = status[cik];
     return s?.state === "ok" ? s.report : undefined;
   };
-  const loaded = managers.filter((m) => status[m.cik]?.state !== "loading").length;
+  const loaded = managers.filter((m) => {
+    const state = status[m.cik]?.state;
+    return state === "ok" || state === "error";
+  }).length;
+  const waiting = managers.some((m) => status[m.cik]?.state === "waiting");
 
   const sorted = useMemo(() => {
     if (sort === "name") return [...managers].sort((a, b) => a.name.localeCompare(b.name));
@@ -117,8 +146,10 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
       >
         {loaded < managers.length && (
           <p className="px-5 text-xs text-gray-500 sm:px-6">
-            Loaded {loaded} of {managers.length}. The first visit of the day reads five years of filings for each
-            manager; after that it&apos;s instant.
+            Loaded {loaded} of {managers.length}.{" "}
+            {waiting
+              ? "The SEC asked us to slow down, so the next manager will resume in about a minute (nothing is lost)."
+              : "The first visit of the day reads five years of filings for each manager; after that it's instant."}
           </p>
         )}
         <div className="overflow-x-auto px-5 pb-5 sm:px-6">
@@ -150,6 +181,11 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
                     {s?.state === "loading" ? (
                       <td colSpan={5} className="px-3 py-3">
                         <div className="h-8 animate-pulse rounded-lg bg-gray-100" />
+                      </td>
+                    ) : s?.state === "waiting" ? (
+                      <td colSpan={5} className="px-3 py-3 text-xs text-amber-800">
+                        SEC rate limit reached; retrying at{" "}
+                        {new Date(s.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                       </td>
                     ) : s?.state === "error" ? (
                       <td colSpan={5} className="px-3 py-3 text-xs text-rose-700">

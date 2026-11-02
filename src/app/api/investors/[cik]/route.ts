@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadManagerReport, UnknownManagerError } from "@/lib/investors/load";
-import { hasSecAgent } from "@/lib/sec/client";
+import { hasSecAgent, SecRateLimitError } from "@/lib/sec/client";
 import { getCurrentUser } from "@/lib/supabase/server";
 import type { APIError } from "@/lib/types";
 
@@ -26,6 +26,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ cik: st
     if (err instanceof UnknownManagerError) {
       const error: APIError = { error: "NOT_FOUND", message: err.message };
       return NextResponse.json(error, { status: 404 });
+    }
+    if (err instanceof SecRateLimitError) {
+      const error: APIError = { error: "RATE_LIMITED", message: err.message };
+      return NextResponse.json(error, {
+        status: 429,
+        headers: { "Retry-After": String(err.retryAfterSeconds) },
+      });
     }
     console.error(`Investor report ${cik} failed:`, err);
     const error: APIError = {
