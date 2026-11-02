@@ -21,6 +21,7 @@ type SortKey = "5" | "3" | "1" | "name";
 // land on separate servers that each pace themselves, together exceeding the SEC's
 // 10 requests a second. Cached reports return instantly, so this costs little.
 const CONCURRENCY = 1;
+const CONSENSUS_PAGE = 30;
 const RATE_LIMIT_RETRIES = 4;
 /** Big filers (Jane Street's 13F is ~9 MB a quarter) take several 40-second rounds the first time. */
 const STILL_LOADING_RETRIES = 12;
@@ -73,6 +74,8 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
   const [sort, setSort] = useState<SortKey>("5");
   const [onlyAhead, setOnlyAhead] = useState(false);
   const [hideOwned, setHideOwned] = useState(false);
+  const [query, setQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,11 +129,15 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
       .map((manager) => ({ manager, report: reportOf(manager.cik) }))
       .filter((e): e is { manager: Manager; report: ManagerReport } => Boolean(e.report));
     const all = consensus(pool, owned, onlyAhead ? Math.min(2, pool.length) : 2);
-    return (hideOwned ? all.filter((r) => r.ownedPct === null) : all).slice(0, 30);
+    return hideOwned ? all.filter((r) => r.ownedPct === null) : all;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, onlyAhead, hideOwned, owned, managers]);
 
   const hasOwned = Object.keys(owned).length > 0;
+  const rank = new Map(rows.map((r, i) => [r.ticker, i + 1]));
+  const q = query.trim().toLowerCase();
+  const matching = q ? rows.filter((r) => r.ticker.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)) : rows;
+  const visibleRows = q || showAll ? matching : matching.slice(0, CONSENSUS_PAGE);
 
   return (
     <div className="space-y-6">
@@ -257,6 +264,14 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
               {o.label}
             </button>
           ))}
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find a stock"
+            aria-label="Find a stock"
+            className="w-40 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
+          />
           {hasOwned && (
             <label className="ml-auto flex items-center gap-2 text-sm text-gray-700">
               <input
@@ -273,6 +288,7 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
           <table className="min-w-full text-sm">
             <thead className="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               <tr>
+                <th className="w-8 py-2 pr-2">#</th>
                 <th className="py-2 pr-3">Stock</th>
                 <th className="px-3 py-2">Held by</th>
                 <th className="px-3 py-2 text-right">Avg weight</th>
@@ -280,8 +296,9 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {visibleRows.map((r) => (
                 <tr key={r.ticker} className="border-t border-gray-100 align-top">
+                  <td className="num py-3 pr-2 text-xs text-gray-400">{rank.get(r.ticker)}</td>
                   <td className="py-3 pr-3">
                     <div className="font-semibold text-gray-900">
                       <TickerLink ticker={r.ticker} />
@@ -310,10 +327,25 @@ export function InvestorsBoard({ managers, owned }: { managers: Manager[]; owned
               ))}
             </tbody>
           </table>
-          {rows.length === 0 && (
+          {visibleRows.length === 0 && (
             <p className="py-8 text-center text-sm text-gray-500">
-              {loaded < managers.length ? "Waiting for the managers to load…" : "No stock is shared by two of them."}
+              {q
+                ? `None of the loaded managers' top 40 positions include "${query.trim()}" alongside another manager.`
+                : loaded < managers.length
+                  ? "Waiting for the managers to load…"
+                  : "No stock is shared by two of them."}
             </p>
+          )}
+          {!q && matching.length > CONSENSUS_PAGE && (
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
+              >
+                {showAll ? "Show top 30" : `Show all ${matching.length}`}
+              </button>
+            </div>
           )}
         </div>
       </Card>
