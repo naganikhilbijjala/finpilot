@@ -29,6 +29,7 @@ const NOISE = new Set([
 // Names too different to normalise: fund filing key -> SEC ticker.
 const ALIASES: Record<string, string> = {
   BLACKROCKFUNDING: "BLK",
+  CRH: "CRH", // SEC: "CRH PUBLIC LTD CO"
 };
 
 export const normalizeTicker = (t: string) => t.trim().toUpperCase().replace(/[./ ]/g, "-");

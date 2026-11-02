@@ -9,6 +9,7 @@ import {
   PercentIcon,
   PlusIcon,
   SparkIcon,
+  TrophyIcon,
   UploadIcon,
   UsersIcon,
   WalletIcon,
@@ -38,7 +39,10 @@ function buildSections(isOwner: boolean): NavSection[] {
   }
   sections.push({
     title: "Research",
-    items: [{ href: "/screener", label: "Screener", icon: <SparkIcon /> }],
+    items: [
+      { href: "/screener", label: "Screener", icon: <SparkIcon /> },
+      { href: "/investors", label: "Top investors", icon: <TrophyIcon /> },
+    ],
   });
   sections.push({
     title: "Manual portfolio",

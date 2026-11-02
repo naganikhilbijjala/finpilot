@@ -151,3 +151,10 @@ export const ExternalLinkIcon = (p: IconProps) => (
     <path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" />
   </Icon>
 );
+export const TrophyIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M8 21h8M12 17v4" />
+    <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" />
+    <path d="M17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3" />
+  </Icon>
+);

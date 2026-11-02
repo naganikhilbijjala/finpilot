@@ -82,35 +82,44 @@ const fetchSeriesPairs = unstable_cache(
   { revalidate: DAY_S }
 );
 
+/** Latest N-PORT filing for a fund series, CUSIPs included. Not cached: callers cache what they keep. */
+export async function fetchNportDocument(seriesId: string): Promise<NportFiling> {
+  const feed = await (
+    await secFetch(
+      `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${seriesId}&type=NPORT-P&dateb=&owner=include&count=1&output=atom`
+    )
+  ).text();
+  const href = feed.match(/<filing-href>([^<]+)<\/filing-href>/)?.[1];
+  if (!href) throw new Error(`No N-PORT filing found for series ${seriesId}`);
+  const folder = href.slice(0, href.lastIndexOf("/"));
+  const filing = parseNport(await (await secFetch(`${folder}/primary_doc.xml`)).text());
+  if (filing.seriesId && filing.seriesId !== seriesId) {
+    throw new Error(`N-PORT for ${seriesId} described ${filing.seriesId}`);
+  }
+  return filing;
+}
+
 /** Latest N-PORT holdings for a fund series. */
 const fetchFiling = unstable_cache(
   async (seriesId: string): Promise<NportFiling> => {
-    const feed = await (
-      await secFetch(
-        `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${seriesId}&type=NPORT-P&dateb=&owner=include&count=1&output=atom`
-      )
-    ).text();
-    const href = feed.match(/<filing-href>([^<]+)<\/filing-href>/)?.[1];
-    if (!href) throw new Error(`No N-PORT filing found for series ${seriesId}`);
-    const folder = href.slice(0, href.lastIndexOf("/"));
-    const filing = parseNport(await (await secFetch(`${folder}/primary_doc.xml`)).text());
-    if (filing.seriesId && filing.seriesId !== seriesId) {
-      throw new Error(`N-PORT for ${seriesId} described ${filing.seriesId}`);
-    }
+    const filing = await fetchNportDocument(seriesId);
     // CUSIPs aren't used by the calculation; dropping them keeps big bond funds cacheable.
-    return { ...filing, holdings: filing.holdings.map((h) => ({ ...h, cusip: null })) };
+    return {
+      ...filing,
+      holdings: filing.holdings.map((h) => ({ ...h, cusip: null })),
+    };
   },
   ["sec-nport-v2"],
   { revalidate: DAY_S / 2 }
 );
 
-const loadCompanyIndex = () =>
+export const loadCompanyIndex = () =>
   companies("all", async () => {
     const rows = await fetchCompanyRows();
     return buildCompanyIndex(rows.map(([cik_str, ticker, title]) => ({ cik_str, ticker, title })));
   });
 
-const loadSeriesMap = () => seriesMap("all", async () => new Map(await fetchSeriesPairs()));
+export const loadSeriesMap = () => seriesMap("all", async () => new Map(await fetchSeriesPairs()));
 
 const loadFiling = (seriesId: string) => filings(seriesId, () => fetchFiling(seriesId));
 
@@ -166,11 +175,17 @@ export async function loadExposure(include?: (accountId: string) => boolean): Pr
         const seriesId = series.get(proxy ?? t);
         if (!seriesId) {
           funds.set(p.ticker, null);
-          fundErrors.push({ ticker: p.ticker, message: "The SEC has no holdings filing for this fund" });
+          fundErrors.push({
+            ticker: p.ticker,
+            message: "The SEC has no holdings filing for this fund",
+          });
           return;
         }
         try {
-          funds.set(p.ticker, { filing: await loadFiling(seriesId), proxyFor: proxy });
+          funds.set(p.ticker, {
+            filing: await loadFiling(seriesId),
+            proxyFor: proxy,
+          });
         } catch (err) {
           console.error(`N-PORT load failed for ${p.ticker}:`, err);
           funds.set(p.ticker, null);
